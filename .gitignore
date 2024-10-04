@@ -1,0 +1,11 @@
+venv
+*.jsonl
+marco-*
+msmarco-*
+runs*
+run*
+*.csv
+*.tsv
+*.txt
+
+!data/*
