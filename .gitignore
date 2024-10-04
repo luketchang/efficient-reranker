@@ -9,3 +9,6 @@ run*
 *.txt
 
 !data/*
+
+milvus/volumes
+data/*
