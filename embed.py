@@ -1,27 +1,17 @@
 import argparse
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection
-from sentence_transformers import SentenceTransformer
-
-def get_model(model_name, max_seq_len=None):
-    """
-    Load the sentence transformer model and adjust the max_seq_length if provided.
-    """
-    model = SentenceTransformer(model_name, trust_remote_code=True)
-    if max_seq_len:
-        model.max_seq_length = max_seq_len
-    embedding_dim = model.get_sentence_embedding_dimension()  # Automatically get the dimension
-    return model, embedding_dim
+from embed_utils import get_embedding_model
 
 def create_index(collection):
     # Define the index parameters
     index_params = {
-        "index_type": "IVF_FLAT",  # or "HNSW", "IVF_PQ" depending on your needs
-        "metric_type": "L2",       # or "IP" for inner product
-        "params": {"nlist": 128}
+        "index_type": "IVF_FLAT",  # or HNSW, IVF_PQ depending on your needs
+        "metric_type": "COSINE",
+        "params": {"nlist": 3000}
     }
     
-    # Create the index
-    collection.create_index(field_name="embedding", index_params=index_params)
+    # Create the index on the "vector" field
+    collection.create_index(field_name="vector", index_params=index_params)
     print("Index created.")
 
 def create_collection(collection_name, dim):
@@ -50,8 +40,8 @@ def insert_data(collection, pids, vectors, passages):
     # Insert the data as a list of dictionaries
     collection.insert(data)
     print(f"Inserted {len(pids)} records into Milvus.")
-    
-def process_file_and_insert(collection, model, file_path, batch_size):
+
+def process_file_and_insert(collection, model, file_path, batch_size, max_lines=None):
     """
     Process the input file in batches, generate embeddings, and insert them into Milvus.
     """
@@ -61,6 +51,9 @@ def process_file_and_insert(collection, model, file_path, batch_size):
 
     with open(file_path, 'r', encoding='utf-8') as f:
         for i, line in enumerate(f):
+            if max_lines and i >= max_lines:
+                break
+
             pid, passage = line.strip().split('\t', 1)
             pids.append(int(pid))  # Convert pid to integer
             passages.append(passage)
@@ -89,6 +82,7 @@ def main():
     parser = argparse.ArgumentParser(description='Milvus embedding script with Sentence Transformers')
     parser.add_argument('--model_name', type=str, required=True, help='Sentence transformer model name')
     parser.add_argument('--input_file_path', type=str, required=True, help='Path to the input file')
+    parser.add_argument('--input_max_lines', type=int, default=None, help='Maximum number of lines to read from the input file')
     parser.add_argument('--collection_name', type=str, required=True, help='Milvus collection name')
     parser.add_argument('--batch_size', type=int, default=1000, help='Batch size for embedding and insertion')
     parser.add_argument('--max_seq_len', type=int, default=None, help='Maximum sequence length for the model')
@@ -102,7 +96,7 @@ def main():
 
     # Load the sentence transformer model and get embedding dimensions
     print(f"Loading model '{args.model_name}'...")
-    model, embedding_dim = get_model(args.model_name, max_seq_len=args.max_seq_len)
+    model, embedding_dim = get_embedding_model(args.model_name, max_seq_len=args.max_seq_len)
     print(f"Loaded model '{args.model_name}' with embedding dimension: {embedding_dim}")
 
     # Step 1: Create the Milvus collection
@@ -111,7 +105,7 @@ def main():
 
     # Step 2: Process file and insert data into Milvus in batches
     print(f"Processing file '{args.input_file_path}' and inserting data into Milvus...")
-    process_file_and_insert(collection, model, args.input_file_path, args.batch_size)
+    process_file_and_insert(collection, model, args.input_file_path, args.batch_size, max_lines=args.input_max_lines)
 
     # Step 3: Create an index after data insertion
     print("Creating index...")
