@@ -1,4 +1,5 @@
 import argparse
+import json
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection
 from embed_utils import get_embedding_model
 
@@ -54,8 +55,15 @@ def process_file_and_insert(collection, model, file_path, batch_size, max_lines=
             if max_lines and i >= max_lines:
                 break
 
-            pid, passage = line.strip().split('\t', 1)
-            pids.append(int(pid))  # Convert pid to integer
+            # Parse each line as a JSON object
+            data = json.loads(line)
+            pid = data["_id"]
+            title = data.get("title", "")
+            text = data["text"]
+
+            # Combine title and text (if title exists) for the passage
+            passage = title + " " + text if title else text
+            pids.append(int(pid.replace("doc", "")))  # Convert _id to integer (remove "doc" prefix)
             passages.append(passage)
 
             if len(passages) == batch_size:
@@ -81,7 +89,7 @@ def process_file_and_insert(collection, model, file_path, batch_size, max_lines=
 def main():
     parser = argparse.ArgumentParser(description='Milvus embedding script with Sentence Transformers')
     parser.add_argument('--model_name', type=str, required=True, help='Sentence transformer model name')
-    parser.add_argument('--input_file_path', type=str, required=True, help='Path to the input file')
+    parser.add_argument('--input_file_path', type=str, required=True, help='Path to the input JSONL file')
     parser.add_argument('--input_max_lines', type=int, default=None, help='Maximum number of lines to read from the input file')
     parser.add_argument('--collection_name', type=str, required=True, help='Milvus collection name')
     parser.add_argument('--batch_size', type=int, default=1000, help='Batch size for embedding and insertion')
