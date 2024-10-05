@@ -89,7 +89,7 @@ def process_file_and_insert(collection, model, file_path, batch_size, max_lines=
 def main():
     parser = argparse.ArgumentParser(description='Milvus embedding script with Sentence Transformers')
     parser.add_argument('--model_name', type=str, required=True, help='Sentence transformer model name')
-    parser.add_argument('--input_file_path', type=str, required=True, help='Path to the input JSONL file')
+    parser.add_argument('--input_path', type=str, required=True, help='Path to the input JSONL file')
     parser.add_argument('--input_max_lines', type=int, default=None, help='Maximum number of lines to read from the input file')
     parser.add_argument('--collection_name', type=str, required=True, help='Milvus collection name')
     parser.add_argument('--batch_size', type=int, default=1000, help='Batch size for embedding and insertion')
