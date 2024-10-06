@@ -28,3 +28,4 @@ faiss-cpu
 setuptools
 wheel
 pymilvus
+FlagEmbedding

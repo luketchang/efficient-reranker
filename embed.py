@@ -1,7 +1,7 @@
 import argparse
 import json
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection
-from embed_utils import get_embedding_model
+from embeddings.sentence_transformers import SentenceTransformersEmbeddingModel
 
 def create_index(collection):
     # Define the index parameters
@@ -69,7 +69,7 @@ def process_file_and_insert(collection, model, file_path, batch_size, max_lines=
             if len(passages) == batch_size:
                 # Generate embeddings for the current batch
                 print(f"Processing batch {i // batch_size + 1}...")
-                embeddings = model.encode(passages)
+                embeddings = model.encode_documents(passages)
                 vectors.extend(embeddings)
 
                 # Insert the batch into Milvus
@@ -82,7 +82,7 @@ def process_file_and_insert(collection, model, file_path, batch_size, max_lines=
 
         # Insert any remaining data that didn't fill up the last batch
         if passages:
-            embeddings = model.encode(passages)
+            embeddings = model.encode_documents(passages)
             vectors.extend(embeddings)
             insert_data(collection, pids, vectors, passages)
 
@@ -104,7 +104,8 @@ def main():
 
     # Load the sentence transformer model and get embedding dimensions
     print(f"Loading model '{args.model_name}'...")
-    model, embedding_dim = get_embedding_model(args.model_name, max_seq_len=args.max_seq_len)
+    model = SentenceTransformersEmbeddingModel(args.model_name, max_seq_len=args.max_seq_len)
+    embedding_dim = model.embedding_dim()
     print(f"Loaded model '{args.model_name}' with embedding dimension: {embedding_dim}")
 
     # Step 1: Create the Milvus collection
