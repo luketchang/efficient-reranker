@@ -7,6 +7,7 @@ run*
 *.csv
 *.tsv
 *.txt
+!requirements.txt
 
 !data/*
 
