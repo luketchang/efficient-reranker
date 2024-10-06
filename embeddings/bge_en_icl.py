@@ -1,5 +1,5 @@
 from FlagEmbedding import FlagICLModel
-from embedding_model import EmbeddingModelInterface
+from embeddings.embedding_model import EmbeddingModelInterface
 
 class BgeEnIclEmbeddingModel(EmbeddingModelInterface):
     model: FlagICLModel
@@ -8,7 +8,7 @@ class BgeEnIclEmbeddingModel(EmbeddingModelInterface):
         self.model = BgeEnIclEmbeddingModel.load_model(use_fp16)
 
     def embedding_dim(self):
-        return self.model.model.dim
+        return self.model.model.config.hidden_size
 
     def encode_queries(self, queries):
         return self.model.encode_queries(queries)
