@@ -9,7 +9,7 @@ def get_embedding_model(model_name, max_seq_len=None):
         model_name, 
         trust_remote_code=True, 
         device="cuda" if torch.cuda.is_available() else "cpu",
-        torch_dtype=torch.float16,
+        # model_kwargs={"torch_dtype": torch.float16}
     )
     if max_seq_len:
         model.max_seq_length = max_seq_len

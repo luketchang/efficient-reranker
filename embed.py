@@ -112,8 +112,8 @@ def main():
     collection = create_collection(args.collection_name, embedding_dim)
 
     # Step 2: Process file and insert data into Milvus in batches
-    print(f"Processing file '{args.input_file_path}' and inserting data into Milvus...")
-    process_file_and_insert(collection, model, args.input_file_path, args.batch_size, max_lines=args.input_max_lines)
+    print(f"Processing file '{args.input_path}' and inserting data into Milvus...")
+    process_file_and_insert(collection, model, args.input_path, args.batch_size, max_lines=args.input_max_lines)
 
     # Step 3: Create an index after data insertion
     print("Creating index...")
