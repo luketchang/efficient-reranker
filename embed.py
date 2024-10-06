@@ -1,7 +1,7 @@
 import argparse
 import json
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection
-from embeddings.sentence_transformers import SentenceTransformersEmbeddingModel
+from embeddings.bge_en_icl import BgeEnIclEmbeddingModel
 
 def create_index(collection):
     # Define the index parameters
@@ -104,7 +104,7 @@ def main():
 
     # Load the sentence transformer model and get embedding dimensions
     print(f"Loading model '{args.model_name}'...")
-    model = SentenceTransformersEmbeddingModel(args.model_name, max_seq_len=args.max_seq_len)
+    model = BgeEnIclEmbeddingModel(use_fp16=True)
     embedding_dim = model.embedding_dim()
     print(f"Loaded model '{args.model_name}' with embedding dimension: {embedding_dim}")
 

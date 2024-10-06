@@ -1,7 +1,7 @@
 import json
 import argparse
 from pymilvus import connections, Collection
-from embeddings.sentence_transformers import SentenceTransformersEmbeddingModel
+from embeddings.bge_en_icl import BgeEnIclEmbeddingModel
 
 def load_qrels(qrels_filter_path):
     """Load qids from the qrels tsv file into a set."""
@@ -79,7 +79,7 @@ def main():
     connections.connect(host=milvus_host, port=milvus_port)
     
     # Load the embedding model
-    embedding_model = SentenceTransformersEmbeddingModel(model_name)
+    embedding_model = model = BgeEnIclEmbeddingModel(use_fp16=True)
     
     # Load the Milvus collection
     collection = Collection(collection_name)
