@@ -20,7 +20,7 @@ run_embed() {
     cat << EOF > embedEtcd.yaml
 listen-client-urls: http://0.0.0.0:2379
 advertise-client-urls: http://0.0.0.0:2379
-quota-backend-bytes: 4294967296
+quota-backend-bytes: 107374182400
 auto-compaction-mode: revision
 auto-compaction-retention: '1000'
 EOF
