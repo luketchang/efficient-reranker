@@ -5,6 +5,7 @@ from datasets.instruct_encoder import InstructEncoderDataset, DatasetType
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import torch
+from embed_utils import last_token_pool
 
 def write_results_to_file(output_path, query_ids, results_batch):
     """Write search results to the output file in tsv format."""
@@ -27,6 +28,10 @@ def main():
 
     args = parser.parse_args()
 
+    # Set up the device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
     # Load the tokenizer and dataset for queries
     print(f"Loading tokenizer and dataset from '{args.queries_path}'...")
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
@@ -44,7 +49,7 @@ def main():
 
     # Load the embedding model
     print(f"Loading embedding model '{args.model_name}'...")
-    model = AutoModel.from_pretrained(args.model_name, torch_dtype=torch.float16)
+    model = AutoModel.from_pretrained(args.model_name, torch_dtype=torch.float16).to(device)
     model.eval()
 
     # Process queries in batches using DataLoader
@@ -52,16 +57,16 @@ def main():
     for i, batch in enumerate(tqdm(dataloader, desc="Processing batches")):
         print(f"Processing batch {i}")
         query_ids = batch["ids"]
-        inputs = {k: v for k, v in batch.items() if k == "input_ids" or k == "attention_mask"}
+        inputs = {k: v.to(device) for k, v in batch.items() if k == "input_ids" or k == "attention_mask"}
 
         with torch.no_grad():
             # Generate query embeddings
             outputs = model(**inputs)
-            query_vectors = outputs.last_hidden_state[:, 0, :].detach().cpu().numpy()  # CLS token pooling or adapt as needed
+            query_vectors = last_token_pool(outputs.last_hidden_state, inputs["attention_mask"])
 
         # Perform search in Milvus for the batch of queries
         results_batch = client.search(
-            data=query_vectors,
+            data=query_vectors.cpu().numpy(),  # Move to CPU for Milvus
             anns_field="vector",
             param={"metric_type": "COSINE", "params": {"nprobe": 32}},
             limit=args.k,

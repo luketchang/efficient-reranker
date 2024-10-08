@@ -20,7 +20,6 @@ class InstructEncoderDataset(Dataset):
 
         self._load_examples_prefix(prefix_examples)
         self._load_data(qrels_filter_path)
-        print("MAX SEQ LEN", self.max_seq_len)
 
     def _load_qrels(self, qrels_filter_path):
         qids = set()
