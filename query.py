@@ -12,7 +12,8 @@ def write_results_to_file(output_path, query_ids, results_batch):
     with open(output_path, 'a') as file:
         for i, results in enumerate(results_batch):
             for hit in results:
-                file.write(f"{query_ids[i]}\t{hit.id}\t{hit.distance}\n")
+                print(hit)
+                file.write(f"{query_ids[i]}\t{hit['entity']['id']}\t{hit['distance']}\n")
 
 def main():
     parser = argparse.ArgumentParser(description="Perform similarity search on Milvus and output qrels.")
@@ -62,15 +63,16 @@ def main():
         with torch.no_grad():
             # Generate query embeddings
             outputs = model(**inputs)
-            query_vectors = last_token_pool(outputs.last_hidden_state, inputs["attention_mask"])
+            query_vectors = last_token_pool(outputs.last_hidden_state, inputs["attention_mask"]).to(torch.float32)
 
         # Perform search in Milvus for the batch of queries
         results_batch = client.search(
+            collection_name=args.collection_name,
             data=query_vectors.cpu().numpy(),  # Move to CPU for Milvus
             anns_field="vector",
-            param={"metric_type": "COSINE", "params": {"nprobe": 32}},
+            search_params={"metric_type": "COSINE", "params": {"nprobe": 32}},
             limit=args.k,
-            output_fields=["id", "text"]
+            output_fields=["id"]
         )
 
         # Write the results to the output file
