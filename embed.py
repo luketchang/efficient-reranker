@@ -1,4 +1,5 @@
 import argparse
+import torch
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection
 from transformers import AutoModel, AutoTokenizer
 from datasets.instruct_encoder import InstructEncoderDataset, DatasetType
@@ -61,7 +62,7 @@ def main():
     parser.add_argument('--input_path', type=str, required=True, help='Path to the input JSONL file')
     parser.add_argument('--max_input_lines', type=int, default=None, help='Maximum number of lines to read from the input file')
     parser.add_argument('--collection_name', type=str, required=True, help='Milvus collection name')
-    parser.add_argument('--batch_size', type=int, default=1000, help='Batch size for embedding and insertion')
+    parser.add_argument('--batch_size', type=int, default=16, help='Batch size for embedding and insertion')
     parser.add_argument('--max_seq_len', type=int, default=None, help='Maximum sequence length for the model')
     parser.add_argument('--milvus_host', type=str, default='127.0.0.1', help='Milvus host')
     parser.add_argument('--milvus_port', type=str, default='19530', help='Milvus port')
@@ -78,12 +79,12 @@ def main():
     # Load the dataset to embed
     accelerator.print(f"Loading dataset from '{args.input_path}'...")
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    dataset = InstructEncoderDataset(DatasetType.DOC, args.input_path, max_seq_len=args.max_seq_len, max_lines=args.max_input_lines)
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
+    dataset = InstructEncoderDataset(DatasetType.DOC, args.input_path, tokenizer, max_seq_len=args.max_seq_len, max_lines=args.max_input_lines)
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, collate_fn=dataset.collate_fn)
 
     # Load the sentence transformer model and get embedding dimensions
     accelerator.print(f"Loading model '{args.model_name}'...")
-    model = AutoModel.from_pretrained(args.model_name)
+    model = AutoModel.from_pretrained(args.model_name, torch_dtype=torch.float16)
     model.eval()
     embedding_dim = model.config.hidden_size
     accelerator.print(f"Loaded model '{args.model_name}' with embedding dimension: {embedding_dim}")
@@ -100,7 +101,7 @@ def main():
 
     # Process file and insert data into Milvus in batches
     accelerator.print(f"Processing file '{args.input_path}' and inserting data into Milvus...")
-    encode_data(collection, model, args.input_path, args.batch_size, max_lines=args.input_max_lines)
+    encode_data(accelerator, model, dataloader, tokenizer, collection)
 
     # Create index on the collection (main process only)
     if accelerator.is_main_process:
