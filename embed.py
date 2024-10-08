@@ -9,40 +9,7 @@ from torch.utils.data import DataLoader
 from accelerate import Accelerator, DeepSpeedPlugin
 from embed_utils import last_token_pool
 from tqdm import tqdm
-
-def create_index(collection):
-    # Define the index parameters
-    index_params = {
-        "index_type": "IVF_FLAT",  # or HNSW, IVF_PQ depending on your needs
-        "metric_type": "COSINE",
-        "params": {"nlist": 3000}
-    }
-    
-    # Create the index on the "vector" field
-    collection.create_index(field_name="vector", index_params=index_params)
-    print("Index created.")
-
-def create_collection(collection_name, dim):
-    fields = [
-        FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=False),
-        FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=dim),  # Embedding dimension
-        FieldSchema(name="passage", dtype=DataType.VARCHAR, max_length=8192),
-    ]
-    schema = CollectionSchema(fields, f"Schema for {collection_name} with embeddings")
-    collection = Collection(name=collection_name, schema=schema)
-    print(f"Collection '{collection_name}' created.")
-    return collection
-
 import numpy as np
-
-def append_data_to_txt(doc_ids_file, vectors_file, doc_ids, vectors):
-    # Append doc_ids to the text file
-    with open(doc_ids_file, 'a') as f:
-        np.savetxt(f, doc_ids, fmt='%d')  # Save doc_ids as integers
-    
-    # Append vectors to the text file
-    with open(vectors_file, 'a') as f:
-        np.savetxt(f, vectors, delimiter=',', fmt='%.6f')  # Save vectors with 6 decimal precision
 
 def encode_data(accelerator, model, dataloader, buffer_num_batches=25):
     doc_ids_file = f"doc_ids_{accelerator.process_index}.txt"
