@@ -66,15 +66,16 @@ def encode_data(accelerator, model, dataloader, buffer_num_batches=25):
             vectors = last_token_pool(outputs.last_hidden_state, inputs["attention_mask"])
 
         # Accumulate the current batch's data in GPU memory
-        doc_ids_buffer.append(pids.detach().cpu())
-        vectors_buffer.append(vectors.detach().cpu())
+        doc_ids_buffer.append(pids.detach())  # Keep on GPU
+        vectors_buffer.append(vectors.detach())  # Keep on GPU
 
-        # If the buffer is large enough, write to file
+        # If the buffer is large enough, move to CPU and write to file
         if len(doc_ids_buffer) >= buffer_num_batches:
+            # Transfer to CPU only when flushing the buffer
             accelerator.print("Flushing buffer to file")
             flush_buffer_to_file(doc_ids_file, vectors_file, doc_ids_buffer, vectors_buffer)
-            doc_ids_buffer = []
-            vectors_buffer = []
+            doc_ids_buffer = []  # Clear the buffer after writing
+            vectors_buffer = []  # Clear the buffer after writing
 
         # Clear GPU memory
         del pids, vectors, outputs
@@ -87,8 +88,9 @@ def encode_data(accelerator, model, dataloader, buffer_num_batches=25):
     accelerator.print(f"Data saved incrementally to {doc_ids_file} and {vectors_file}")
 
 def flush_buffer_to_file(doc_ids_file, vectors_file, doc_ids_buffer, vectors_buffer):
-    doc_ids = [pid.numpy() for pid in doc_ids_buffer]
-    vectors = [vector.numpy() for vector in vectors_buffer]
+    # Transfer buffers to CPU just before writing to disk
+    doc_ids = [pid.cpu().numpy() for pid in doc_ids_buffer]
+    vectors = [vector.cpu().numpy() for vector in vectors_buffer]
 
     # Concatenate the buffered data
     doc_ids = np.concatenate(doc_ids, axis=0)
@@ -98,9 +100,6 @@ def flush_buffer_to_file(doc_ids_file, vectors_file, doc_ids_buffer, vectors_buf
     with open(doc_ids_file, 'a') as f_doc, open(vectors_file, 'a') as f_vec:
         np.savetxt(f_doc, doc_ids, fmt='%d')  # Save doc_ids as integers
         np.savetxt(f_vec, vectors, fmt='%.8f')  # Save vectors with 8 decimal precision
-
-    del doc_ids
-    del vectors
         
 def main():
     parser = argparse.ArgumentParser(description='Milvus embedding script with Sentence Transformers')
