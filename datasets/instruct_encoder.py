@@ -8,7 +8,7 @@ class DatasetType(Enum):
     DOC = 1
 
 class InstructEncoderDataset(Dataset):
-    def __init__(self, dataset_type: DatasetType, input_path, tokenizer, max_seq_len=None, max_lines=None, prefix_examples=None, qrels_filter_path=None):
+    def __init__(self, dataset_type: DatasetType, input_path, tokenizer, max_seq_len=4096, max_lines=None, prefix_examples=None, qrels_filter_path=None):
         self.dataset_type = dataset_type
         self.input_path = input_path
         self.tokenizer = tokenizer
@@ -20,12 +20,14 @@ class InstructEncoderDataset(Dataset):
 
         self._load_examples_prefix(prefix_examples)
         self._load_data(qrels_filter_path)
+        print("MAX SEQ LEN", self.max_seq_len)
 
     def _load_qrels(self, qrels_filter_path):
         qids = set()
         with open(qrels_filter_path, 'r') as file:
             for line in file:
-                qid = line.strip().split()[0]  # Assuming QREL format where QID is the first column
+                qid = line.strip().split()[0]
+                qid = qid.replace("query", "").replace("test", "")
                 qids.add(qid)
         return qids
 
@@ -46,6 +48,7 @@ class InstructEncoderDataset(Dataset):
                 
                 # Filter queries if QIDs filter is applied
                 if self.dataset_type == DatasetType.QUERY and qids_filter and id not in qids_filter:
+                    print("Skipping query", id)
                     continue
 
                 title = data.get("title", "")

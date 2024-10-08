@@ -50,6 +50,8 @@ def encode_data(accelerator, model, dataloader):
 
     # Wrap the dataloader with tqdm for progress tracking
     for batch_idx, batch in enumerate(tqdm(dataloader, desc=f"Processing batches")):
+        accelerator.print(f"Processing batch {batch_idx}")
+
         # Filter the inputs to include only 'input_ids' and 'attention_mask'
         inputs = {k: v for k, v in batch.items() if k == "input_ids" or k == "attention_mask"}
         pids = batch["ids"]
@@ -77,10 +79,6 @@ def main():
     parser.add_argument("--use_ds", type=bool, default=False, help="Use DeepSpeed for training")
     args = parser.parse_args()
 
-    # Connect to Milvus
-    print(f"Connecting to Milvus at {args.milvus_host}:{args.milvus_port}")
-    connections.connect(host=args.milvus_host, port=args.milvus_port)
-
     deepspeed_plugin = DeepSpeedPlugin(
         zero_stage=2,           # Use ZeRO stage 2 (stage 3 offloads even more, but is slower)
         offload_optimizer_device="none",  # Whether to offload optimizer state to CPU (reduce GPU VRAM)
@@ -107,26 +105,10 @@ def main():
 
     model, dataloader = accelerator.prepare(model, dataloader)
 
-    # Create the Milvus collection (main process only)
-    if accelerator.is_main_process:
-        accelerator.print(f"Creating collection '{args.collection_name}'...")
-        collection = create_collection(args.collection_name, embedding_dim)
-
-    # No processing until main process has finished creating collection
-    accelerator.wait_for_everyone() 
-
     # Process file and insert data into Milvus in batches
-    accelerator.print(f"Processing file '{args.input_path}' and inserting data into Milvus...")
+    accelerator.print(f"Processing file '{args.input_path}' and inserting data into txt files for process {accelerator.process_index}")
     encode_data(accelerator, model, dataloader)
-
-    # Create index on the collection (main process only)
-    if accelerator.is_main_process:
-        accelerator.print("Creating index...")
-        create_index(collection)
-
-        print("Loading the collection...")
-        collection.load()
-        print(f"Collection '{args.collection_name}' loaded and ready for querying.")
+    accelerator.print(f"Data processing complete for process {accelerator.process_index}")
 
 
 if __name__ == "__main__":
