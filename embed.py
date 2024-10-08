@@ -1,10 +1,12 @@
 import argparse
+import os
+import numpy as np
 import torch
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection
 from transformers import AutoModel, AutoTokenizer
 from datasets.instruct_encoder import InstructEncoderDataset, DatasetType
 from torch.utils.data import DataLoader
-from accelerate import Accelerator
+from accelerate import Accelerator, DeepSpeedPlugin
 from embed_utils import last_token_pool
 from tqdm import tqdm
 
@@ -31,30 +33,36 @@ def create_collection(collection_name, dim):
     print(f"Collection '{collection_name}' created.")
     return collection
 
-def encode_data(accelerator, model, dataloader, tokenizer, collection):
+import numpy as np
+
+def append_data_to_txt(doc_ids_file, vectors_file, doc_ids, vectors):
+    # Append doc_ids to the text file
+    with open(doc_ids_file, 'a') as f:
+        np.savetxt(f, doc_ids, fmt='%d')  # Save doc_ids as integers
+    
+    # Append vectors to the text file
+    with open(vectors_file, 'a') as f:
+        np.savetxt(f, vectors, delimiter=',', fmt='%.6f')  # Save vectors with 6 decimal precision
+
+def encode_data(accelerator, model, dataloader):
+    doc_ids_file = f"doc_ids_{accelerator.process_index}.txt"
+    vectors_file = f"vectors_{accelerator.process_index}.txt"
+
     # Wrap the dataloader with tqdm for progress tracking
-    for batch in tqdm(dataloader, desc=f"Processing batches"):
+    for batch_idx, batch in enumerate(tqdm(dataloader, desc=f"Processing batches")):
         # Filter the inputs to include only 'input_ids' and 'attention_mask'
         inputs = {k: v for k, v in batch.items() if k == "input_ids" or k == "attention_mask"}
         pids = batch["ids"]
 
-        # Decode input_ids into human-readable text
-        passages = tokenizer.batch_decode(inputs["input_ids"], skip_special_tokens=True)
-
         # Generate embeddings
-        outputs = model(**inputs)
-        vectors = last_token_pool(outputs.last_hidden_state, inputs["attention_mask"])
+        with torch.no_grad():
+            outputs = model(**inputs)
+            vectors = last_token_pool(outputs.last_hidden_state, inputs["attention_mask"])
 
-        # Insert the data into the collection (e.g., database)
-        data = [
-            {"id": pids[i], "vector": vectors[i], "passage": passages[i]}
-            for i in range(len(pids))
-        ]
-        
-        # Insert the data as a list of dictionaries
-        collection.insert(data)
-        accelerator.print(f"Inserted batch with {len(pids)} items into the collection")
+        # Save doc_ids and vectors to separate text files
+        append_data_to_txt(doc_ids_file, vectors_file, pids.detach().cpu().numpy(), vectors.detach().cpu().numpy())
 
+    accelerator.print(f"Data saved incrementally to {doc_ids_file} and {vectors_file}")
 
 def main():
     parser = argparse.ArgumentParser(description='Milvus embedding script with Sentence Transformers')
@@ -66,14 +74,22 @@ def main():
     parser.add_argument('--max_seq_len', type=int, default=None, help='Maximum sequence length for the model')
     parser.add_argument('--milvus_host', type=str, default='127.0.0.1', help='Milvus host')
     parser.add_argument('--milvus_port', type=str, default='19530', help='Milvus port')
+    parser.add_argument("--use_ds", type=bool, default=False, help="Use DeepSpeed for training")
     args = parser.parse_args()
 
     # Connect to Milvus
     print(f"Connecting to Milvus at {args.milvus_host}:{args.milvus_port}")
     connections.connect(host=args.milvus_host, port=args.milvus_port)
 
+    deepspeed_plugin = DeepSpeedPlugin(
+        zero_stage=2,           # Use ZeRO stage 2 (stage 3 offloads even more, but is slower)
+        offload_optimizer_device="none",  # Whether to offload optimizer state to CPU (reduce GPU VRAM)
+        offload_param_device="none",       # Whether to offload parameters to CPU (reduce GPU VRAM)
+        # hf_ds_config=ds_config_path
+    ) if args.use_ds else None
+
     # Setup accelerator
-    accelerator = Accelerator(device_placement=True)
+    accelerator = Accelerator(deepspeed_plugin=deepspeed_plugin, device_placement=True)
     accelerator.print(f"State: {accelerator.state}")
 
     # Load the dataset to embed
@@ -101,7 +117,7 @@ def main():
 
     # Process file and insert data into Milvus in batches
     accelerator.print(f"Processing file '{args.input_path}' and inserting data into Milvus...")
-    encode_data(accelerator, model, dataloader, tokenizer, collection)
+    encode_data(accelerator, model, dataloader)
 
     # Create index on the collection (main process only)
     if accelerator.is_main_process:

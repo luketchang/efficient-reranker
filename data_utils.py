@@ -2,21 +2,10 @@ import json
 
 def load_hits_from_qrels_queries_corpus(qrels_file, queries_file, corpus_file=None):
     # Step 1: Load Queries File
-    queries = {}
-    with open(queries_file, 'r') as f:
-        for line in f:
-            line = json.loads(line)
-            qid, query = line["_id"], line["text"]
-            queries[qid] = query
+    queries = load_qids_to_queries(queries_file)
 
     # Step 2: Load Corpus File
-    corpus = {}
-    if corpus_file is not None:
-        with open(corpus_file, 'r') as f:
-            for line in f:
-                line = json.loads(line)
-                doc_id, text = line["_id"], line["text"]
-                corpus[doc_id] = text
+    corpus = load_pids_to_passages(corpus_file) if corpus_file is not None else None
 
     # Step 3: Load qrels and combine all data
     results = {}
@@ -55,3 +44,23 @@ def load_hits_from_qrels_queries_corpus(qrels_file, queries_file, corpus_file=No
         })
 
     return rank_results
+
+def load_qids_to_queries(queries_file):
+    queries = {}
+    with open(queries_file, 'r') as f:
+        for line in f:
+            line = json.loads(line)
+            qid, query = line["_id"], line["text"]
+            queries[qid] = query
+
+    return queries
+
+def load_pids_to_passages(corpus_file):
+    corpus = {}
+    with open(corpus_file, 'r') as f:
+        for line in f:
+            line = json.loads(line)
+            pid, passage = line["_id"], line["text"]
+            corpus[pid] = passage
+
+    return corpus
