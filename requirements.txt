@@ -1,8 +1,8 @@
 tqdm
 openai
 tiktoken
-torch
-numpy
+torch>=2.0.0,<3.0.0
+numpy>=1.21.0,<2.0.0  # Ensure compatibility with PyTorch and other libraries
 pandas
 ipykernel
 dask
@@ -12,7 +12,7 @@ bokeh
 # Training
 accelerate
 datasets
-transformers
+transformers>=4.30.0  # Pin to a version known to work with PyTorch and NumPy
 bitsandbytes
 deepspeed
 tensorboard
@@ -21,7 +21,7 @@ typing_extensions==4.7.1
 sentencepiece
 sentence-transformers
 
-pybind11
+pybind11>=2.12  # Ensure compatibility with both NumPy 1.x and 2.x
 nmslib
 pyserini
 faiss-cpu
