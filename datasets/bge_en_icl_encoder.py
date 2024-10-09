@@ -1,13 +1,9 @@
-import json
 import torch
 from torch.utils.data import Dataset
 from enum import Enum
+from datasets.utils import load_data_from_jsonl, DatasetType
 
-class DatasetType(Enum):
-    QUERY = 0,
-    DOC = 1
-
-class InstructEncoderDataset(Dataset):
+class BgeEnIclDataset(Dataset):
     def __init__(self, dataset_type: DatasetType, input_path, tokenizer, max_seq_len=4096, max_lines=None, prefix_examples=None, qrels_filter_path=None):
         self.dataset_type = dataset_type
         self.input_path = input_path
@@ -15,45 +11,16 @@ class InstructEncoderDataset(Dataset):
         self.max_seq_len = max_seq_len
         self.max_lines = max_lines
         self.task = 'Given a query, retrieve relevant passages that answer the query.'
-        self.data = []
         self.qrels_filter_path = qrels_filter_path
 
         self._load_examples_prefix(prefix_examples)
-        self._load_data(qrels_filter_path)
+        self.data = load_data_from_jsonl(dataset_type, input_path, qrels_filter_path, max_lines)
 
-    def _load_qrels(self, qrels_filter_path):
-        qids = set()
-        with open(qrels_filter_path, 'r') as file:
-            for line in file:
-                qid = line.strip().split()[0]
-                qid = qid.replace("query", "").replace("test", "")
-                qids.add(qid)
-        return qids
-
-    def _load_data(self, qrels_filter_path=None):
-        # Load QIDs filter from qrels if provided
-        qids_filter = set()
-        if self.dataset_type == DatasetType.QUERY and self.qrels_filter_path:
-            qids_filter = self._load_qrels(qrels_filter_path)
-            print(f"Loaded {len(qids_filter)} qids from qrels filter.")
-
-        # Load the data
-        with open(self.input_path, 'r', encoding='utf-8') as f:
-            for i, line in enumerate(f):
-                if self.max_lines and i >= self.max_lines:
-                    break
-                data = json.loads(line)
-                id = data["_id"].replace("doc", "").replace("test", "")  # Remove prefixes
-                
-                # Filter queries if QIDs filter is applied
-                if self.dataset_type == DatasetType.QUERY and qids_filter and id not in qids_filter:
-                    print("Skipping query", id)
-                    continue
-
-                title = data.get("title", "")
-                text = data["text"]
-                passage = title + " " + text if title else text
-                self.data.append({"id": int(id), "text": passage})
+    def get_detailed_example(self, query: str, response: str) -> str:
+        return f'<instruct>{self.task}\n<query>{query}\n<response>{response}'
+    
+    def get_detailed_instruct(self, query: str) -> str:
+        return f'<instruct>{self.task}\n<query>{query}'
 
     def _load_examples_prefix(self, examples):
         if examples is None:
@@ -65,18 +32,13 @@ class InstructEncoderDataset(Dataset):
                 'query': 'causes of back pain in female for a week',
                 'response': "Back pain in females lasting a week can stem from various factors. Common causes include muscle strain due to lifting heavy objects or improper posture, spinal issues like herniated discs or osteoporosis, menstrual cramps causing referred pain, urinary tract infections, or pelvic inflammatory disease. Pregnancy-related changes can also contribute. Stress and lack of physical activity may exacerbate symptoms. Proper diagnosis by a healthcare professional is crucial for effective treatment and management."}
                 ]            
-        examples = [self.get_detailed_example(e['instruct'], e['query'], e['response']) for e in examples]
+        examples = [self.get_detailed_example(e['query'], e['response']) for e in examples]
         self.examples_prefix = '\n\n'.join(examples) + '\n\n' 
 
-    def get_detailed_example(self, task_description: str, query: str, response: str) -> str:
-        return f'<instruct>{task_description}\n<query>{query}\n<response>{response}'
-
     def __len__(self):
-        """Returns the size of the dataset."""
         return len(self.data)
 
     def __getitem__(self, idx):
-        """Returns a tokenized sample."""
         sample = self.data[idx]
         text = sample["text"]
         id = sample["id"]
@@ -93,6 +55,7 @@ class InstructEncoderDataset(Dataset):
 
         max_len = self.max_seq_len
         if self.dataset_type == DatasetType.QUERY:
+            texts = self.get_detailed_instruct(texts)
             max_len, texts = self.get_new_queries(texts)
             
         tokenized = self.tokenizer(
@@ -109,6 +72,7 @@ class InstructEncoderDataset(Dataset):
             "attention_mask": tokenized["attention_mask"],
         }
 
+    # TODO: forgot about get_detailed_instruct
     def get_new_queries(self, queries):
         inputs = self.tokenizer(
             queries,
