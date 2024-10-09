@@ -36,17 +36,12 @@ def create_collection(client, collection_name, dim):
         schema=schema,
     )
 
-def encode_data(accelerator, model, dataloader, tokenizer, client, collection_name, batch_size=16, start_line=0):
+def encode_data(accelerator, model, dataloader, tokenizer, client, collection_name):
     doc_ids_file = f"doc_ids_{accelerator.process_index}.txt"
     vectors_file = f"vectors_{accelerator.process_index}.txt"
 
-    start_batch_idx = start_line // batch_size
-
     # Wrap the dataloader with tqdm for progress tracking
     for batch_idx, batch in enumerate(tqdm(dataloader, desc=f"Processing batches")):
-        if batch_idx < start_batch_idx:
-            continue
-
         accelerator.print(f"Processing batch {batch_idx}")
 
         # Filter the inputs to include only 'input_ids' and 'attention_mask'
@@ -106,7 +101,7 @@ def main():
     # Load the dataset to embed
     accelerator.print(f"Loading dataset from '{args.input_path}'...")
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    dataset = QwenDataset(DatasetType.DOC, args.input_path, tokenizer, max_seq_len=args.max_seq_len, max_lines=args.max_input_lines)
+    dataset = QwenDataset(DatasetType.DOC, args.input_path, tokenizer, max_seq_len=args.max_seq_len, start_line=args.start_line, max_lines=args.max_input_lines)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, collate_fn=dataset.collate_fn)
 
     # Load the sentence transformer model and get embedding dimensions
@@ -130,7 +125,7 @@ def main():
 
     # Process file and insert data into Milvus in batches
     accelerator.print(f"Worker {accelerator.process_index} processing file '{args.input_path}'")
-    encode_data(accelerator, model, dataloader, tokenizer, client, args.collection_name, batch_size=args.batch_size, start_line=args.start_line)
+    encode_data(accelerator, model, dataloader, tokenizer, client, args.collection_name)
     accelerator.print(f"Data processing complete for process {accelerator.process_index}")
 
     # Ensure everyone has written data before creating index

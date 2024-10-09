@@ -4,7 +4,7 @@ from enum import Enum
 from datasets.utils import load_data_from_jsonl, DatasetType
 
 class QwenDataset(Dataset):
-    def __init__(self, dataset_type: DatasetType, input_path, tokenizer, max_seq_len=4096, max_lines=None, qrels_filter_path=None):
+    def __init__(self, dataset_type: DatasetType, input_path, tokenizer, max_seq_len=4096, start_line=0, max_lines=None, qrels_filter_path=None):
         self.dataset_type = dataset_type
         self.input_path = input_path
         self.tokenizer = tokenizer
@@ -14,7 +14,7 @@ class QwenDataset(Dataset):
         self.data = []
         self.qrels_filter_path = qrels_filter_path
 
-        self.data = load_data_from_jsonl(dataset_type, input_path, qrels_filter_path, max_lines)
+        self.data = load_data_from_jsonl(dataset_type, input_path, qrels_filter_path, start_line, max_lines)
 
     def get_detailed_instruct(self, query: str) -> str:
         return f'Instruct: {self.task}\nQuery: {query}'

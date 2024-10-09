@@ -14,7 +14,7 @@ def load_qrels(qrels_path):
                 qids.add(qid)
         return qids
 
-def load_data_from_jsonl(dataset_type, input_path, qrels_filter_path=None, max_lines=None):
+def load_data_from_jsonl(dataset_type, input_path, qrels_filter_path=None, start_line=0, max_lines=None):
         data_arr = []
         qids_filter = set()
         if dataset_type == DatasetType.QUERY and qrels_filter_path:
@@ -24,8 +24,14 @@ def load_data_from_jsonl(dataset_type, input_path, qrels_filter_path=None, max_l
         # Load the data
         with open(input_path, 'r', encoding='utf-8') as f:
             for i, line in enumerate(f):
-                if max_lines and i >= max_lines:
+                # continue until start line reached
+                if i < start_line:
+                    continue
+
+                # break if max lines reached
+                if max_lines and i - start_line >= max_lines:
                     break
+
                 data = json.loads(line)
                 id = data["_id"].replace("doc", "").replace("test", "")  # Remove prefixes
                 
