@@ -2,7 +2,8 @@ import argparse
 import torch
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection, MilvusClient
 from transformers import AutoModel, AutoTokenizer
-from datasets.bge_en_icl_encoder import BgeEnIclDataset, DatasetType
+from datasets.qwen_encoder import QwenDataset
+from datasets.utils import DatasetType
 from torch.utils.data import DataLoader
 from accelerate import Accelerator, DeepSpeedPlugin
 from embed_utils import last_token_pool
@@ -17,7 +18,7 @@ def create_index(client, collection_name):
     index_params.add_index(
         field_name="vector", 
         index_type="IVF_FLAT",
-        metric_type="IP",
+        metric_type="COSINE",
         params={ "nlist": 128 }
     )
     
@@ -105,7 +106,7 @@ def main():
     # Load the dataset to embed
     accelerator.print(f"Loading dataset from '{args.input_path}'...")
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    dataset = BgeEnIclDataset(DatasetType.DOC, args.input_path, tokenizer, max_seq_len=args.max_seq_len, max_lines=args.max_input_lines)
+    dataset = QwenDataset(DatasetType.DOC, args.input_path, tokenizer, max_seq_len=args.max_seq_len, max_lines=args.max_input_lines)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, collate_fn=dataset.collate_fn)
 
     # Load the sentence transformer model and get embedding dimensions

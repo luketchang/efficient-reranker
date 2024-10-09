@@ -1,7 +1,8 @@
 import argparse
-from pymilvus import MilvusClient
+from pymilvus import MilvusClient, connections
 from transformers import AutoModel, AutoTokenizer
-from datasets.bge_en_icl_encoder import BgeEnIclDataset, DatasetType
+from datasets.utils import DatasetType
+from datasets.qwen_encoder import QwenDataset
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import torch
@@ -23,9 +24,10 @@ def main():
     parser.add_argument("--collection_name", type=str, required=True, help="Milvus collection name")
     parser.add_argument("--k", type=int, required=True, help="Number of results to return for each query")
     parser.add_argument("--output_path", type=str, default="qrels.tsv", help="Path to output the qrels.tsv file")
-    parser.add_argument("--milvus_db_path", type=str, required=True, help="Path to the Milvus Lite database")
     parser.add_argument("--batch_size", type=int, default=10, help="Number of queries to process in a batch")
     parser.add_argument("--max_seq_len", type=int, default=4096, help="Maximum sequence length for the model")
+    parser.add_argument('--milvus_host', type=str, default='127.0.0.1', help='Milvus host')
+    parser.add_argument('--milvus_port', type=str, default='19530', help='Milvus port')
 
     args = parser.parse_args()
 
@@ -36,7 +38,7 @@ def main():
     # Load the tokenizer and dataset for queries
     print(f"Loading tokenizer and dataset from '{args.queries_path}'...")
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    dataset = BgeEnIclDataset(
+    dataset = QwenDataset(
         dataset_type=DatasetType.QUERY, 
         input_path=args.queries_path, 
         tokenizer=tokenizer, 
@@ -44,13 +46,18 @@ def main():
         qrels_filter_path=args.qrels_filter_path
     )
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, collate_fn=dataset.collate_fn)
-    print("length of dataset: ", len(dataset))
+    print("length of dataset:", len(dataset))
 
-    client = MilvusClient(args.milvus_db_path)
+    # connect to Milvus
+    print(f"Connecting to Milvus at {args.milvus_host}:{args.milvus_port}")
+    connections.connect(host=args.milvus_host, port=args.milvus_port)
+    client = MilvusClient(f"http://{args.milvus_host}:{args.milvus_port}")
+    print("Loading collection...")
+    client.load_collection(args.collection_name)
 
     # Load the embedding model
     print(f"Loading embedding model '{args.model_name}'...")
-    model = AutoModel.from_pretrained(args.model_name, torch_dtype=torch.float16).to(device)
+    model = AutoModel.from_pretrained(args.model_name).to(device)
     model.eval()
 
     # Process queries in batches using DataLoader
