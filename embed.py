@@ -11,7 +11,7 @@ from embed_utils import last_token_pool
 from tqdm import tqdm
 import numpy as np
 
-def encode_data(accelerator, model, dataloader, buffer_num_batches=50, start_line=0):
+def encode_data(accelerator, model, dataloader, batch_size=16, buffer_num_batches=50, start_line=0):
     doc_ids_file = f"doc_ids_{accelerator.process_index}.txt"
     vectors_file = f"vectors_{accelerator.process_index}.txt"
 
@@ -19,7 +19,7 @@ def encode_data(accelerator, model, dataloader, buffer_num_batches=50, start_lin
     doc_ids_buffer = []
     vectors_buffer = []
 
-    start_batch_idx = start_line // dataloader.batch_size
+    start_batch_idx = start_line // batch_size
 
     # Wrap the dataloader with tqdm for progress tracking
     for batch_idx, batch in enumerate(tqdm(dataloader, desc=f"Processing batches")):
@@ -116,7 +116,7 @@ def main():
 
     # Process file and insert data into Milvus in batches
     accelerator.print(f"Processing file '{args.input_path}' and inserting data into txt files for process {accelerator.process_index}")
-    encode_data(accelerator, model, dataloader, start_line=args.start_line)
+    encode_data(accelerator, model, dataloader, batch_size=args.batch_size, start_line=args.start_line)
     accelerator.print(f"Data processing complete for process {accelerator.process_index}")
 
 
