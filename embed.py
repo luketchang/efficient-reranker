@@ -1,8 +1,6 @@
 import argparse
-import os
-import numpy as np
 import torch
-from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection
+from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection, MilvusClient
 from transformers import AutoModel, AutoTokenizer
 from datasets.bge_en_icl_encoder import BgeEnIclDataset, DatasetType
 from torch.utils.data import DataLoader
@@ -11,13 +9,35 @@ from embed_utils import last_token_pool
 from tqdm import tqdm
 import numpy as np
 
-def encode_data(accelerator, model, dataloader, batch_size=16, buffer_num_batches=50, start_line=0):
+def create_index(client, collection_name):
+    # Define the index parameters
+    index_params = client.prepare_index_params()
+
+    # Create the index on the "vector" field
+    index_params.add_index(
+        field_name="vector", 
+        index_type="IVF_FLAT",
+        metric_type="IP",
+        params={ "nlist": 128 }
+    )
+    
+    client.create_index(collection_name, index_params=index_params)
+
+def create_collection(client, collection_name, dim):
+    fields = [
+        FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=False),
+        FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=dim),  # Embedding dimension
+        FieldSchema(name="text", dtype=DataType.VARCHAR, max_length=8192),
+    ]
+    schema = CollectionSchema(fields, f"Schema for {collection_name} with embeddings")
+    client.create_collection(
+        collection_name=collection_name,
+        schema=schema,
+    )
+
+def encode_data(accelerator, model, dataloader, tokenizer, client, collection_name, batch_size=16, start_line=0):
     doc_ids_file = f"doc_ids_{accelerator.process_index}.txt"
     vectors_file = f"vectors_{accelerator.process_index}.txt"
-
-    # Initialize buffers
-    doc_ids_buffer = []
-    vectors_buffer = []
 
     start_batch_idx = start_line // batch_size
 
@@ -31,48 +51,28 @@ def encode_data(accelerator, model, dataloader, batch_size=16, buffer_num_batche
         # Filter the inputs to include only 'input_ids' and 'attention_mask'
         inputs = {k: v for k, v in batch.items() if k == "input_ids" or k == "attention_mask"}
         pids = batch["ids"]
+        texts = tokenizer.batch_decode(inputs["input_ids"], skip_special_tokens=True)
 
         # Generate embeddings
         with torch.no_grad():
             outputs = model(**inputs)
             vectors = last_token_pool(outputs.last_hidden_state, inputs["attention_mask"])
 
-        # Accumulate the current batch's data in GPU memory
-        doc_ids_buffer.append(pids.detach().cpu())
-        vectors_buffer.append(vectors.detach().cpu())
-
-        # If the buffer is large enough, write to file
-        if len(doc_ids_buffer) >= buffer_num_batches:
-            accelerator.print("Flushing buffer to file")
-            flush_buffer_to_file(doc_ids_file, vectors_file, doc_ids_buffer, vectors_buffer)
-            doc_ids_buffer = []
-            vectors_buffer = []
+        # Insert the data into the collection (e.g., database)
+        data = [
+            {"id": pids[i], "vector": vectors[i], "text": texts[i]}
+            for i in range(len(pids))
+        ]
+        
+        # Insert the data as a list of dictionaries
+        client.insert(collection_name, data)
+        accelerator.print(f"Inserted batch with {len(pids)} items into the collection")
 
         # Clear GPU memory
         del pids, vectors, outputs
         torch.cuda.empty_cache()
 
-    # After all batches, write any remaining data in the buffer to file
-    if doc_ids_buffer:
-        flush_buffer_to_file(doc_ids_file, vectors_file, doc_ids_buffer, vectors_buffer)
-
-    accelerator.print(f"Data saved incrementally to {doc_ids_file} and {vectors_file}")
-
-def flush_buffer_to_file(doc_ids_file, vectors_file, doc_ids_buffer, vectors_buffer):
-    doc_ids = [pid.numpy() for pid in doc_ids_buffer]
-    vectors = [vector.numpy() for vector in vectors_buffer]
-
-    # Concatenate the buffered data
-    doc_ids = np.concatenate(doc_ids, axis=0)
-    vectors = np.concatenate(vectors, axis=0)
-
-    # Write the data to the respective files in append mode
-    with open(doc_ids_file, 'a') as f_doc, open(vectors_file, 'a') as f_vec:
-        np.savetxt(f_doc, doc_ids, fmt='%d')  # Save doc_ids as integers
-        np.savetxt(f_vec, vectors, fmt='%.8f')  # Save vectors with 8 decimal precision
-
-    del doc_ids
-    del vectors
+    accelerator.print(f"Data saved to {doc_ids_file} and {vectors_file}")
         
 def main():
     parser = argparse.ArgumentParser(description='Milvus embedding script with Sentence Transformers')
@@ -88,14 +88,17 @@ def main():
     parser.add_argument("--use_ds", type=bool, default=False, help="Use DeepSpeed for training")
     args = parser.parse_args()
 
-    deepspeed_plugin = DeepSpeedPlugin(
-        zero_stage=2,           # Use ZeRO stage 2 (stage 3 offloads even more, but is slower)
-        offload_optimizer_device="none",  # Whether to offload optimizer state to CPU (reduce GPU VRAM)
-        offload_param_device="none",       # Whether to offload parameters to CPU (reduce GPU VRAM)
-        # hf_ds_config=ds_config_path
-    ) if args.use_ds else None
+    # Connect to Milvus
+    print(f"Connecting to Milvus at {args.milvus_host}:{args.milvus_port}")
+    connections.connect(host=args.milvus_host, port=args.milvus_port)
+    client = MilvusClient(f"http://{args.milvus_host}:{args.milvus_port}")
 
     # Setup accelerator
+    deepspeed_plugin = DeepSpeedPlugin(
+        zero_stage=1,           # ZeRO stage 1 for inference?
+        offload_optimizer_device="none",
+        offload_param_device="none",
+    ) if args.use_ds else None
     accelerator = Accelerator(deepspeed_plugin=deepspeed_plugin, device_placement=True)
     accelerator.print(f"State: {accelerator.state}")
 
@@ -112,12 +115,30 @@ def main():
     embedding_dim = model.config.hidden_size
     accelerator.print(f"Loaded model '{args.model_name}' with embedding dimension: {embedding_dim}")
 
+    # accelerator prepare
     model, dataloader = accelerator.prepare(model, dataloader)
 
+     # Create the Milvus collection (main process only)
+    if accelerator.is_main_process:
+        accelerator.print(f"Creating collection '{args.collection_name}'...")
+        create_collection(client, args.collection_name, embedding_dim)
+        accelerator.print("Collection creation complete.")
+
+    # No processing until main process has finished creating collection
+    accelerator.wait_for_everyone() 
+
     # Process file and insert data into Milvus in batches
-    accelerator.print(f"Processing file '{args.input_path}' and inserting data into txt files for process {accelerator.process_index}")
-    encode_data(accelerator, model, dataloader, batch_size=args.batch_size, start_line=args.start_line)
+    accelerator.print(f"Worker {accelerator.process_index} processing file '{args.input_path}'")
+    encode_data(accelerator, model, dataloader, tokenizer, client, args.collection_name, batch_size=args.batch_size, start_line=args.start_line)
     accelerator.print(f"Data processing complete for process {accelerator.process_index}")
+
+    # Ensure everyone has written data before creating index
+    accelerator.wait_for_everyone()
+
+    # Create index (main process only)
+    if accelerator.is_main_process:
+        create_index(client, args.collection_name)
+        accelerator.print("Index creation complete.")
 
 
 if __name__ == "__main__":
