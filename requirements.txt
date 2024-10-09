@@ -22,8 +22,8 @@ sentencepiece
 sentence-transformers
 
 pybind11>=2.12  # Ensure compatibility with both NumPy 1.x and 2.x
-nmslib
-pyserini
+# nmslib
+# pyserini
 faiss-cpu
 setuptools
 wheel

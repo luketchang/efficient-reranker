@@ -11,7 +11,7 @@ from embed_utils import last_token_pool
 from tqdm import tqdm
 import numpy as np
 
-def encode_data(accelerator, model, dataloader, buffer_num_batches=25):
+def encode_data(accelerator, model, dataloader, buffer_num_batches=50, start_line=0):
     doc_ids_file = f"doc_ids_{accelerator.process_index}.txt"
     vectors_file = f"vectors_{accelerator.process_index}.txt"
 
@@ -19,8 +19,13 @@ def encode_data(accelerator, model, dataloader, buffer_num_batches=25):
     doc_ids_buffer = []
     vectors_buffer = []
 
+    start_batch_idx = start_line // dataloader.batch_size
+
     # Wrap the dataloader with tqdm for progress tracking
     for batch_idx, batch in enumerate(tqdm(dataloader, desc=f"Processing batches")):
+        if batch_idx < start_batch_idx:
+            continue
+
         accelerator.print(f"Processing batch {batch_idx}")
 
         # Filter the inputs to include only 'input_ids' and 'attention_mask'
@@ -73,6 +78,7 @@ def main():
     parser = argparse.ArgumentParser(description='Milvus embedding script with Sentence Transformers')
     parser.add_argument('--model_name', type=str, required=True, help='Sentence transformer model name')
     parser.add_argument('--input_path', type=str, required=True, help='Path to the input JSONL file')
+    parser.add_argument("--start_line", type=int, default=0, help="Starting line number to read from the input file")
     parser.add_argument('--max_input_lines', type=int, default=None, help='Maximum number of lines to read from the input file')
     parser.add_argument('--collection_name', type=str, required=True, help='Milvus collection name')
     parser.add_argument('--batch_size', type=int, default=16, help='Batch size for embedding and insertion')
@@ -110,7 +116,7 @@ def main():
 
     # Process file and insert data into Milvus in batches
     accelerator.print(f"Processing file '{args.input_path}' and inserting data into txt files for process {accelerator.process_index}")
-    encode_data(accelerator, model, dataloader)
+    encode_data(accelerator, model, dataloader, start_line=args.start_line)
     accelerator.print(f"Data processing complete for process {accelerator.process_index}")
 
 
