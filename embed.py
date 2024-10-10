@@ -2,7 +2,8 @@ import argparse
 import torch
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, MilvusClient
 from transformers import AutoModel, AutoTokenizer
-from datasets.bge_en_icl_encoder import BgeEnIclDataset
+# from datasets.bge_en_icl_encoder import BgeEnIclDataset
+from datasets.qwen_encoder import QwenDataset
 from datasets.utils import DatasetType
 from torch.utils.data import DataLoader
 from accelerate import Accelerator, DeepSpeedPlugin
@@ -111,7 +112,7 @@ def main():
     # Load the dataset to embed
     accelerator.print(f"Loading dataset from '{args.input_path}'...")
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    dataset = BgeEnIclDataset(DatasetType.DOC, args.input_path, tokenizer, max_seq_len=args.max_seq_len, start_line=args.start_line, max_lines=args.max_input_lines)
+    dataset = QwenDataset(DatasetType.DOC, args.input_path, tokenizer, max_seq_len=args.max_seq_len, start_line=args.start_line, max_lines=args.max_input_lines)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, collate_fn=dataset.collate_fn)
 
     # Load the model and get embedding dimensions
