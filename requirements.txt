@@ -8,6 +8,7 @@ ipykernel
 dask
 dask[distributed]
 bokeh
+memory_profiler
 
 # Training
 accelerate
