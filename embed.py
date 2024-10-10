@@ -143,6 +143,7 @@ def main():
 
     # Create index (main process only)
     if accelerator.is_main_process:
+        accelerator.print("Creating index...")
         create_index(client, args.collection_name)
         accelerator.print("Index creation complete.")
 

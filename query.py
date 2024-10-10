@@ -8,13 +8,14 @@ from tqdm import tqdm
 import torch
 from embed_utils import last_token_pool
 
-def write_results_to_file(output_path, query_ids, results_batch):
+def write_results_to_file(output_path, query_ids, results_batch, qrels_qid_prefix="", qrels_pid_prefix=""):
     """Write search results to the output file in tsv format."""
     with open(output_path, 'a') as file:
         for i, results in enumerate(results_batch):
             for hit in results:
-                print(hit)
-                file.write(f"{query_ids[i]}\t{hit['entity']['id']}\t{hit['distance']}\n")
+                qid = qrels_qid_prefix + str(query_ids[i])
+                pid = qrels_pid_prefix + str(hit['entity']['id'])
+                file.write(f"{qid}\t{pid}\t{hit['distance']}\n")
 
 def main():
     parser = argparse.ArgumentParser(description="Perform similarity search on Milvus and output qrels.")
@@ -28,6 +29,8 @@ def main():
     parser.add_argument("--max_seq_len", type=int, default=4096, help="Maximum sequence length for the model")
     parser.add_argument('--milvus_host', type=str, default='127.0.0.1', help='Milvus host')
     parser.add_argument('--milvus_port', type=str, default='19530', help='Milvus port')
+    parser.add_argument("--qrels_qid_prefix", type=str, default="", help="Prefix for the qrels file")
+    parser.add_argument("--qrels_pid_prefix", type=str, default="", help="Suffix for the qrels file")
 
     args = parser.parse_args()
 
@@ -83,7 +86,7 @@ def main():
         )
 
         # Write the results to the output file
-        write_results_to_file(args.output_path, query_ids, results_batch)
+        write_results_to_file(args.output_path, query_ids, results_batch, args.qrels_qid_prefix, args.qrels_pid_prefix)
 
     print(f"Results have been saved to {args.output_path}")
 
