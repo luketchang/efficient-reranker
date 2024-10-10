@@ -26,11 +26,14 @@ class BgeEnIclDataset(Dataset):
         if examples is None:
             examples = [
                 {'instruct': self.task,
-                'query': 'what is a virtual interface',
-                'response': "A virtual interface is a software-defined abstraction that mimics the behavior and characteristics of a physical network interface. It allows multiple logical network connections to share the same physical network interface, enabling efficient utilization of network resources. Virtual interfaces are commonly used in virtualization technologies such as virtual machines and containers to provide network connectivity without requiring dedicated hardware. They facilitate flexible network configurations and help in isolating network traffic for security and management purposes."},
+                'query': 'what is the capital of australia',
+                'response': "Canberra Canberra is the capital city of Australia. Founded following the federation of the colonies of Australia as the seat of government for the new nation, it is Australia's largest inland city and the eighth-largest city overall. Located at the northern end of the Australian Capital Territory, Canberra is an entirely planned city."},
                 {'instruct': self.task,
-                'query': 'causes of back pain in female for a week',
-                'response': "Back pain in females lasting a week can stem from various factors. Common causes include muscle strain due to lifting heavy objects or improper posture, spinal issues like herniated discs or osteoporosis, menstrual cramps causing referred pain, urinary tract infections, or pelvic inflammatory disease. Pregnancy-related changes can also contribute. Stress and lack of physical activity may exacerbate symptoms. Proper diagnosis by a healthcare professional is crucial for effective treatment and management."}
+                'query': 'who invented the world wide web',
+                'response': "Tim Berners-Lee Sir Timothy John Berners-Lee, also known as TimBL, is an English engineer and computer scientist, best known as the inventor of the World Wide Web. He implemented the first successful communication between a Hypertext Transfer Protocol (HTTP) client and server via the Internet in mid-November 1989. Berners-Lee is a professor at the Massachusetts Institute of Technology (MIT) and the University of Oxford."},
+                {'instruct': self.task,
+                 'query': 'what is the Higgs boson',
+                 'response': "Higgs Boson The Higgs boson is an elementary particle in the Standard Model of particle physics. It is the quantum excitation of the Higgs field, which is pivotal to explaining how particles acquire mass. The discovery of the Higgs boson was announced in 2012 by physicists working with the Large Hadron Collider at CERN."},
                 ]            
         examples = [self.get_detailed_example(e['query'], e['response']) for e in examples]
         self.examples_prefix = '\n\n'.join(examples) + '\n\n' 
