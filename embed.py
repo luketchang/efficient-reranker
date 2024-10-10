@@ -2,27 +2,13 @@ import argparse
 import torch
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, MilvusClient
 from transformers import AutoModel, AutoTokenizer
-# from datasets.bge_en_icl_encoder import BgeEnIclDataset
-from datasets.qwen_encoder import QwenDataset
+from datasets.bge_en_icl_encoder import BgeEnIclDataset
+# from datasets.qwen_encoder import QwenDataset
 from datasets.utils import DatasetType
 from torch.utils.data import DataLoader
 from accelerate import Accelerator, DeepSpeedPlugin
 from embed_utils import last_token_pool
 from tqdm import tqdm
-
-def create_index(client, collection_name):
-    # Define the index parameters
-    index_params = client.prepare_index_params()
-
-    # Create the index on the "vector" field
-    index_params.add_index(
-        field_name="vector", 
-        index_type="IVF_FLAT",
-        metric_type="COSINE",
-        params={ "nlist": 128 }
-    )
-    
-    client.create_index(collection_name, index_params=index_params)
 
 def create_collection(client, collection_name, dim):
     fields = [
@@ -112,7 +98,7 @@ def main():
     # Load the dataset to embed
     accelerator.print(f"Loading dataset from '{args.input_path}'...")
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    dataset = QwenDataset(DatasetType.DOC, args.input_path, tokenizer, max_seq_len=args.max_seq_len, start_line=args.start_line, max_lines=args.max_input_lines)
+    dataset = BgeEnIclDataset(DatasetType.DOC, args.input_path, tokenizer, max_seq_len=args.max_seq_len, start_line=args.start_line, max_lines=args.max_input_lines)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, collate_fn=dataset.collate_fn)
 
     # Load the model and get embedding dimensions
@@ -144,9 +130,7 @@ def main():
 
     # Create index (main process only)
     if accelerator.is_main_process:
-        accelerator.print("Creating index...")
-        create_index(client, args.collection_name)
-        accelerator.print("Index creation complete.")
+        accelerator.print(f"Finished processing data and exiting program. Be sure to create an index on the collection {args.collection_name} separately!")
 
 if __name__ == "__main__":
     main()

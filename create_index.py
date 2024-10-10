@@ -12,7 +12,7 @@ def recreate_index(client, collection_name, nlist):
     # Define the new index parameters
     index_params = {
         "index_type": "IVF_FLAT",
-        "metric_type": "COSINE",  # Adjust if you're using a different metric type
+        "metric_type": "IP",
         "params": {"nlist": nlist}
     }
 

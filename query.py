@@ -80,7 +80,7 @@ def main():
             collection_name=args.collection_name,
             data=query_vectors.cpu().numpy(),  # Move to CPU for Milvus
             anns_field="vector",
-            search_params={"metric_type": "COSINE", "params": {"nprobe": 256}},
+            search_params={"metric_type": "IP", "params": {"nprobe": 256}},
             limit=args.k,
             output_fields=["id"]
         )
