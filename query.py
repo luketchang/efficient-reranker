@@ -67,7 +67,7 @@ def main():
     print(f"Processing queries and retrieving top {args.k} results...")
     for i, batch in enumerate(tqdm(dataloader, desc="Processing batches")):
         print(f"Processing batch {i}")
-        query_ids = batch["ids"]
+        query_ids = batch["ids"].tolist() if torch.is_tensor(batch["ids"]) else batch["ids"]
         inputs = {k: v.to(device) for k, v in batch.items() if k == "input_ids" or k == "attention_mask"}
 
         with torch.no_grad():
@@ -80,7 +80,7 @@ def main():
             collection_name=args.collection_name,
             data=query_vectors.cpu().numpy(),  # Move to CPU for Milvus
             anns_field="vector",
-            search_params={"metric_type": "COSINE", "params": {"nprobe": 32}},
+            search_params={"metric_type": "COSINE", "params": {"nprobe": 256}},
             limit=args.k,
             output_fields=["id"]
         )
