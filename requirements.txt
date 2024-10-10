@@ -31,3 +31,4 @@ wheel
 pymilvus
 FlagEmbedding
 peft
+beir
