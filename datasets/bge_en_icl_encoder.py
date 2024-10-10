@@ -55,7 +55,7 @@ class BgeEnIclDataset(Dataset):
 
         max_len = self.max_seq_len
         if self.dataset_type == DatasetType.QUERY:
-            texts = self.get_detailed_instruct(texts)
+            texts = [self.get_detailed_instruct(text) for text in texts]
             max_len, texts = self.get_new_queries(texts)
             
         tokenized = self.tokenizer(
@@ -72,7 +72,6 @@ class BgeEnIclDataset(Dataset):
             "attention_mask": tokenized["attention_mask"],
         }
 
-    # TODO: forgot about get_detailed_instruct
     def get_new_queries(self, queries):
         inputs = self.tokenizer(
             queries,

@@ -2,7 +2,7 @@ import argparse
 from pymilvus import MilvusClient, connections
 from transformers import AutoModel, AutoTokenizer
 from datasets.utils import DatasetType
-from datasets.qwen_encoder import QwenDataset
+from datasets.bge_en_icl_encoder import BgeEnIclDataset
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import torch
@@ -41,7 +41,7 @@ def main():
     # Load the tokenizer and dataset for queries
     print(f"Loading tokenizer and dataset from '{args.queries_path}'...")
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    dataset = QwenDataset(
+    dataset = BgeEnIclDataset(
         dataset_type=DatasetType.QUERY, 
         input_path=args.queries_path, 
         tokenizer=tokenizer, 
