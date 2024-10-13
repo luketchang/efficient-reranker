@@ -10,7 +10,7 @@ def load_qrels(qrels_path):
         with open(qrels_path, 'r') as file:
             for line in file:
                 qid = line.strip().split()[0]
-                qid = qid.replace("query", "").replace("test", "")
+                qid = qid.replace("query", "").replace("test", "").replace("train", "").replace("dev", "")
                 qids.add(qid)
         return qids
 
@@ -33,7 +33,7 @@ def load_data_from_jsonl(dataset_type, input_path, qrels_filter_path=None, start
                     break
 
                 data = json.loads(line)
-                id = data["_id"].replace("doc", "").replace("test", "")  # Remove prefixes
+                id = data["_id"].replace("doc", "").replace("test", "").replace("train", "").replace("dev", "")
                 
                 # Filter queries if QIDs filter is applied
                 if dataset_type == DatasetType.QUERY and qids_filter and id not in qids_filter:
