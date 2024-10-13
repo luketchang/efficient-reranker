@@ -1,5 +1,5 @@
 import argparse
-from pymilvus import utility
+from pymilvus import utility, connections
 
 def drop_collection(collection_name):
     try:
@@ -13,9 +13,13 @@ def drop_collection(collection_name):
 
 def main():
     parser = argparse.ArgumentParser(description="Drop a collection from Milvus.")
-    parser.add_argument("collection_name", type=str, help="Name of the collection to drop.")
+    parser.add_argument("--collection_name", type=str, help="Name of the collection to drop.")
+    parser.add_argument('--milvus_host', type=str, default='127.0.0.1', help='Milvus host')
+    parser.add_argument('--milvus_port', type=str, default='19530', help='Milvus port')
 
     args = parser.parse_args()
+
+    connections.connect(host=args.milvus_host, port=args.milvus_port)
     drop_collection(args.collection_name)
 
 if __name__ == "__main__":
