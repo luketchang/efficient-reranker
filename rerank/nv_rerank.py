@@ -131,7 +131,7 @@ if __name__ == "__main__":
     parser.add_argument("--end", type=int, default=None, help="Ending index of queries to process (exclusive)")
     parser.add_argument("--start_entry", type=int, default=0, help="Starting entry number within the query (batch level)")
     parser.add_argument("--window_size", type=int, default=512, help="Number of hits to process in a single batch")
-    parser.add_argument("--sleep_time", type=int, default=4, help="Time to sleep between API requests")
+    parser.add_argument("--sleep_time", type=float, default=4, help="Time to sleep between API requests")
     args = parser.parse_args()
 
     main(args.api_url, args.qrels_path, args.queries_path, args.corpus_path, args.output_path,
