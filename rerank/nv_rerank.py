@@ -28,9 +28,7 @@ def clean_text(text):
 
     return text
 
-def main(qrels_file, queries_file, corpus_file, output_file, start=0, end=None, start_entry=0, window_size=512, sleep_time=4):
-    invoke_url = "https://ai.api.nvidia.com/v1/retrieval/nvidia/nv-rerankqa-mistral-4b-v3/reranking"
-
+def main(api_url, qrels_file, queries_file, corpus_file, output_file, start=0, end=None, start_entry=0, window_size=512, sleep_time=4):
     api_key = os.environ.get('NVIDIA_API_KEY')
     if not api_key:
         print("Error: NVIDIA_API_KEY environment variable is not set.")
@@ -79,7 +77,7 @@ def main(qrels_file, queries_file, corpus_file, output_file, start=0, end=None, 
 
                 while True:
                     try:
-                        response = requests.post(invoke_url, headers=headers, json=payload)
+                        response = requests.post(api_url, headers=headers, json=payload)
                         response.raise_for_status()
                         response_body = response.json()
 
@@ -124,6 +122,7 @@ def main(qrels_file, queries_file, corpus_file, output_file, start=0, end=None, 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Rerank hits using NVIDIA's API")
+    parser.add_argument("--api_url", type=str, default="https://ai.api.nvidia.com/v1/retrieval/nvidia/nv-rerankqa-mistral-4b-v3/reranking", help="URL of the reranking API")
     parser.add_argument("--qrels_path", type=str, required=True, help="Path to the qrels file")
     parser.add_argument("--queries_path", type=str, required=True, help="Path to the queries file")
     parser.add_argument("--corpus_path", type=str, required=True, help="Path to the corpus file")
@@ -135,5 +134,5 @@ if __name__ == "__main__":
     parser.add_argument("--sleep_time", type=int, default=4, help="Time to sleep between API requests")
     args = parser.parse_args()
 
-    main(args.qrels_path, args.queries_path, args.corpus_path, args.output_path,
+    main(args.api_url, args.qrels_path, args.queries_path, args.corpus_path, args.output_path,
          start=args.start, end=args.end, start_entry=args.start_entry, window_size=args.window_size, sleep_time=args.sleep_time)
