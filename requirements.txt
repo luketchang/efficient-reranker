@@ -9,6 +9,8 @@ dask
 dask[distributed]
 bokeh
 memory_profiler
+ftfy
+unidecode
 
 # Training
 accelerate

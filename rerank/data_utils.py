@@ -1,10 +1,10 @@
 import json
 
 def load_hits_from_qrels_queries_corpus(qrels_file, queries_file, corpus_file=None):
-    # Step 1: Load Queries File
+    print(f"Loading qids from '{queries_file}'")
     queries = load_qids_to_queries(queries_file)
 
-    # Step 2: Load Corpus File (if provided)
+    print(f"Loading corpus from '{corpus_file}'")
     corpus = load_pids_to_passages(corpus_file) if corpus_file is not None else None
 
     # Step 3: Load qrels and combine all data
@@ -34,7 +34,7 @@ def load_hits_from_qrels_queries_corpus(qrels_file, queries_file, corpus_file=No
 
     # Step 4: Sort the queries by numeric qid and their hits by score
     rank_results = []
-    for qid in sorted(results.keys(), key=lambda x: int(x)):  # Sort by numeric qid
+    for qid in sorted(results.keys(), key=lambda x: int(x.replace("test", "").replace("train", "").replace("dev", ""))):  # Sort by numeric qid
         sorted_hits = sorted(
             results[qid]['hits'], 
             key=lambda x: -x['score']  # Sort hits by score in descending order
