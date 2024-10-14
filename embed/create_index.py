@@ -1,7 +1,7 @@
 import argparse
 from pymilvus import connections, Collection
 
-def recreate_index(client, collection_name, nlist):
+def recreate_index(collection_name, nlist):
     collection = Collection(collection_name)
 
     # Drop the existing index if it exists
@@ -34,7 +34,7 @@ def main():
     connections.connect(host=args.milvus_host, port=args.milvus_port)
 
     # Recreate the index with the specified nlist
-    recreate_index(connections, args.collection_name, args.nlist)
+    recreate_index(args.collection_name, args.nlist)
 
 if __name__ == "__main__":
     main()
