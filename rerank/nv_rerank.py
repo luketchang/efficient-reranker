@@ -28,7 +28,7 @@ def clean_text(text):
 
     return text
 
-def main(qrels_file, queries_file, corpus_file, output_file, start=0, end=None, start_entry=0, window_size=512):
+def main(qrels_file, queries_file, corpus_file, output_file, start=0, end=None, start_entry=0, window_size=512, sleep_time=4):
     invoke_url = "https://ai.api.nvidia.com/v1/retrieval/nvidia/nv-rerankqa-mistral-4b-v3/reranking"
 
     api_key = os.environ.get('NVIDIA_API_KEY')
@@ -94,7 +94,7 @@ def main(qrels_file, queries_file, corpus_file, output_file, start=0, end=None, 
                             # Store the results in the query_results list
                             query_results.append((qid, hit["docid"], ranking["logit"]))
 
-                        sleep(4)
+                        sleep(sleep_time)
                         break  # Break the loop on success
 
                     except requests.exceptions.RequestException as e:
@@ -132,7 +132,8 @@ if __name__ == "__main__":
     parser.add_argument("--end", type=int, default=None, help="Ending index of queries to process (exclusive)")
     parser.add_argument("--start_entry", type=int, default=0, help="Starting entry number within the query (batch level)")
     parser.add_argument("--window_size", type=int, default=512, help="Number of hits to process in a single batch")
+    parser.add_argument("--sleep_time", type=int, default=4, help="Time to sleep between API requests")
     args = parser.parse_args()
 
     main(args.qrels_path, args.queries_path, args.corpus_path, args.output_path,
-         start=args.start, end=args.end, start_entry=args.start_entry, window_size=args.window_size)
+         start=args.start, end=args.end, start_entry=args.start_entry, window_size=args.window_size, sleep_time=args.sleep_time)
