@@ -29,9 +29,9 @@ def clean_text(text):
     return text
 
 def main(api_url, qrels_file, queries_file, corpus_file, output_file, start=0, end=None, start_entry=0, window_size=512, sleep_time=4):
-    api_key = os.environ.get('NVIDIA_API_KEY')
+    api_key = os.environ.get('NGC_API_KEY')
     if not api_key:
-        print("Error: NVIDIA_API_KEY environment variable is not set.")
+        print("Error: NGC_API_KEY environment variable is not set.")
         sys.exit(1)
 
     headers = {
