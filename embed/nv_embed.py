@@ -3,7 +3,7 @@ import requests
 import os
 import sys
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, MilvusClient
-from datasets.bge_en_icl_encoder import BgeEnIclDataset
+from datasets.raw_text import RawTextDataset
 from datasets.utils import DatasetType
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -36,7 +36,11 @@ def fetch_embeddings(api_url, api_key, input_texts):
     
     response = requests.post(api_url, json=payload, headers=headers)
     response.raise_for_status()  # Raise an error if the request fails
-    return response.json()["embeddings"]
+    
+    data = response.json()["data"]
+    embeddings = [item["embedding"] for item in data]  # List comprehension to extract embeddings
+    
+    return embeddings
 
 def process_and_insert_data(api_url, api_key, dataloader, client, collection_name, flush_interval=32):
     buffered_data = []
@@ -44,7 +48,7 @@ def process_and_insert_data(api_url, api_key, dataloader, client, collection_nam
         print(f"Processing batch {batch_idx}")
 
         pids = batch["ids"]
-        texts = batch["text"]
+        texts = batch["texts"]
 
         # Call the API to fetch embeddings
         vectors = fetch_embeddings(api_url, api_key, texts)
@@ -76,6 +80,7 @@ def main():
     parser.add_argument('--milvus_host', type=str, default='127.0.0.1', help='Milvus host')
     parser.add_argument('--milvus_port', type=str, default='19530', help='Milvus port')
     parser.add_argument('--flush_interval', type=int, default=32, help='Number of batches to buffer before flushing to Milvus')
+    parser.add_argument('--dim', type=int, required=True, help="Embedding dim")
     args = parser.parse_args()
 
     api_key = os.environ.get('NGC_API_KEY')
@@ -90,12 +95,12 @@ def main():
 
     # Load the dataset
     print(f"Loading dataset from '{args.input_path}'...")
-    dataset = BgeEnIclDataset(DatasetType.DOC, args.input_path, None)  # No tokenizer needed
+    dataset = RawTextDataset(DatasetType.DOC, args.input_path)  # No tokenizer needed
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, collate_fn=dataset.collate_fn)
 
     # Create the Milvus collection
     print(f"Creating collection '{args.collection_name}'...")
-    create_collection(client, args.collection_name, dim=768)  # Assume embedding dimension is 768
+    create_collection(client, args.collection_name, dim=args.dim)  # Assume embedding dimension is 768
     print("Collection creation complete.")
 
     # Process the dataset and insert embeddings into Milvus
