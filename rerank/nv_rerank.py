@@ -9,26 +9,8 @@ from unidecode import unidecode
 import re
 from tqdm import tqdm
 
-def clean_text(text):
-    # 1. Fix common encoding issues using ftfy
-    text = ftfy.fix_text(text)
 
-    # 2. Convert non-ASCII characters to ASCII equivalents
-    text = unidecode(text)
-
-    # 3. Replace problematic financial symbols with text equivalents
-    text = text.replace('%', ' percent').replace('$', 'USD')
-
-    # 4. Clean up spaces and redundant punctuation
-    text = ' '.join(text.split())  # Remove excess spaces
-    text = re.sub(r'([.,!?])\1+', r'\1', text)  # Collapse repeated punctuation
-
-    # 5. Replace smart quotes with plain quotes
-    text = text.replace("’", "'").replace("“", '"').replace("”", '"')
-
-    return text
-
-def main(api_url, qrels_file, queries_file, corpus_file, output_file, start=0, end=None, start_entry=0, window_size=512, sleep_time=4):
+def main(api_url, qrels_file, queries_file, corpus_file, output_file, start=0, end=None, start_entry=0, window_size=512, k=100, sleep_time=4):
     api_key = os.environ.get('NGC_API_KEY')
     if not api_key:
         print("Error: NGC_API_KEY environment variable is not set.")
@@ -48,8 +30,13 @@ def main(api_url, qrels_file, queries_file, corpus_file, output_file, start=0, e
     with open(output_file, 'a') as f:  # Use 'a' to append results incrementally
         for idx in tqdm(range(start, end)):
             query = {"text": rank_results[idx]["query"]}
-            hits = rank_results[idx]["hits"]
-            qid = hits[0]["qid"]
+            hits = rank_results[idx]["hits"][:k]  # Keep only the top 100 hits
+            hits = [hit for hit in hits if hit["content"].strip() != ""]
+            qid = hits[0]["qid"] if hits else None
+
+            if not hits:
+                print(f"No hits found for query {idx + 1}")
+                continue
 
             print(f"Processing query {idx + 1} (QID: {qid})")
 
@@ -58,11 +45,7 @@ def main(api_url, qrels_file, queries_file, corpus_file, output_file, start=0, e
             for batch_start in range(start_entry, len(hits), window_size):
                 batch_end = min(batch_start + window_size, len(hits))
                 batch_hits = hits[batch_start:batch_end]
-                passages = [
-                    {"text": clean_text(hit["content"])}
-                    for hit in batch_hits
-                    if clean_text(hit["content"]).strip()  # Exclude empty/whitespace-only strings
-                ]
+                passages = [{"text": hit["content"]} for hit in batch_hits]
 
                 payload = {
                     "model": "nvidia/nv-rerankqa-mistral-4b-v3",
@@ -131,8 +114,9 @@ if __name__ == "__main__":
     parser.add_argument("--end", type=int, default=None, help="Ending index of queries to process (exclusive)")
     parser.add_argument("--start_entry", type=int, default=0, help="Starting entry number within the query (batch level)")
     parser.add_argument("--window_size", type=int, default=512, help="Number of hits to process in a single batch")
+    parser.add_argument("--k", type=int, default=100, help="Number of hits to keep for each query")
     parser.add_argument("--sleep_time", type=float, default=4, help="Time to sleep between API requests")
     args = parser.parse_args()
 
     main(args.api_url, args.qrels_path, args.queries_path, args.corpus_path, args.output_path,
-         start=args.start, end=args.end, start_entry=args.start_entry, window_size=args.window_size, sleep_time=args.sleep_time)
+         start=args.start, end=args.end, start_entry=args.start_entry, window_size=args.window_size, k=args.k, sleep_time=args.sleep_time)
