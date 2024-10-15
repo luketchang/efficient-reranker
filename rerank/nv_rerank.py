@@ -28,6 +28,8 @@ def main(api_url, qrels_file, queries_file, corpus_file, output_file, start=0, e
     start = max(0, min(start, end - 1))
 
     with open(output_file, 'a') as f:  # Use 'a' to append results incrementally
+        
+        # For each set of hits for query: take top k hits, filter out any empty passages, iterate through k samples in window sized batches, send batch to API, update hits with new API logits, resort hits by logit score, write results to file
         for idx in tqdm(range(start, end)):
             query = {"text": rank_results[idx]["query"]}
             hits = rank_results[idx]["hits"][:k]  # Keep only the top 100 hits
@@ -41,7 +43,6 @@ def main(api_url, qrels_file, queries_file, corpus_file, output_file, start=0, e
             print(f"Processing query {idx + 1} (QID: {qid})")
 
             query_results = []  # Collect results for the current query
-
             for batch_start in range(start_entry, len(hits), window_size):
                 batch_end = min(batch_start + window_size, len(hits))
                 batch_hits = hits[batch_start:batch_end]
@@ -69,11 +70,11 @@ def main(api_url, qrels_file, queries_file, corpus_file, output_file, start=0, e
                         # Collect the results in query_results list
                         for ranking in response_body["rankings"]:
                             original_index = batch_start + ranking["index"]
+                            hits[original_index]["score"] = ranking["logit"]
                             hit = hits[original_index]
-                            hit["score"] = ranking["logit"]
 
                             # Store the results in the query_results list
-                            query_results.append((qid, hit["docid"], ranking["logit"]))
+                            query_results.append((qid, hit["docid"], hit["score"]))
 
                         sleep(sleep_time)
                         break  # Break the loop on success

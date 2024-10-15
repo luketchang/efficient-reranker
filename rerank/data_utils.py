@@ -59,7 +59,13 @@ def load_pids_to_passages(corpus_file):
     corpus = {}
     with open(corpus_file, 'r') as f:
         for line in f:
-            line = json.loads(line)
-            pid, passage = line["_id"], line["text"]
+            data = json.loads(line)
+            pid = data["_id"]
+            
+            # Extract title and text, combining them if the title exists
+            title = data.get("title", "")
+            text = data["text"]
+            passage = title + "\n" + text if title and title.strip() else text
+            
             corpus[pid] = passage
     return corpus
