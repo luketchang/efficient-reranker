@@ -1,7 +1,7 @@
 from torch.utils.data import Dataset
 from datasets.utils import load_data_from_jsonl, DatasetType
 
-class RawTextDataset(Dataset):
+class RawTextSingleDataset(Dataset):
     def __init__(self, dataset_type: DatasetType, input_path, start_line=0, max_lines=None, 
                  qrels_filter_path=None, max_seq_len=512):
         self.dataset_type = dataset_type

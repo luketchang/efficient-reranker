@@ -1,7 +1,7 @@
 import argparse
 import requests
 from pymilvus import MilvusClient, connections
-from datasets.raw_text import RawTextDataset
+from datasets.raw_text_single import RawTextSingleDataset
 from datasets.utils import DatasetType
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -71,7 +71,7 @@ def main():
 
     # Load queries dataset
     print(f"Loading queries from '{args.queries_path}'...")
-    dataset = RawTextDataset(DatasetType.QUERY, args.queries_path, qrels_filter_path=args.qrels_filter_path)
+    dataset = RawTextSingleDataset(DatasetType.QUERY, args.queries_path, qrels_filter_path=args.qrels_filter_path)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, collate_fn=dataset.collate_fn)
     print(f"Loaded {len(dataset)} queries.")
 

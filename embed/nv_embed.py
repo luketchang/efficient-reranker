@@ -3,7 +3,7 @@ import requests
 import os
 import sys
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, MilvusClient
-from datasets.raw_text import RawTextDataset
+from datasets.raw_text_single import RawTextSingleDataset
 from datasets.utils import DatasetType
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -95,7 +95,7 @@ def main():
 
     # Load the dataset
     print(f"Loading dataset from '{args.input_path}'...")
-    dataset = RawTextDataset(DatasetType.DOC, args.input_path)  # No tokenizer needed
+    dataset = RawTextSingleDataset(DatasetType.DOC, args.input_path)  # No tokenizer needed
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, collate_fn=dataset.collate_fn)
 
     # Create the Milvus collection
