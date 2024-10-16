@@ -24,7 +24,7 @@ def fetch_embeddings(api_url, api_key, input_texts):
     payload = {
         "model": "nvidia/nv-embedqa-mistral-7b-v2",
         "encoding_format": "float",
-        "truncate": "NONE",
+        "truncate": "END",
         "input": input_texts,
         "input_type": "passage",
         "user": "placeholder"
