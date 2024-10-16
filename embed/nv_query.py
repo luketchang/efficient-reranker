@@ -47,6 +47,7 @@ def main():
     parser.add_argument("--qrels_filter_path", type=str, help="Path to the qrels TSV file to filter out queries")
     parser.add_argument("--collection_name", type=str, required=True, help="Milvus collection name")
     parser.add_argument("--k", type=int, required=True, help="Number of results to return for each query")
+    parser.add_argument("--nprobe", type=int, default=512, help="Number of probes for the search")
     parser.add_argument("--output_path", type=str, default="qrels.tsv", help="Path to the qrels output file")
     parser.add_argument("--batch_size", type=int, default=10, help="Number of queries to process in a batch")
     parser.add_argument('--milvus_host', type=str, default='127.0.0.1', help='Milvus host')
@@ -89,7 +90,7 @@ def main():
             collection_name=args.collection_name,
             data=query_vectors,
             anns_field="vector",
-            search_params={"metric_type": "IP", "params": {"nprobe": 512}},
+            search_params={"metric_type": "IP", "params": {"nprobe": args.nprobe}},
             limit=args.k,
             output_fields=["id"]
         )
