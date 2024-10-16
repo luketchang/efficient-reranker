@@ -1,7 +1,7 @@
 from data_utils import load_qid_to_pid_to_score
 import argparse
 
-def main(rank_results_path, ground_truth_path, top_k_perc=0.95):
+def main(rank_results_path, ground_truth_path, top_k_perc=0.95, remove_positives=False):
     hits = load_qid_to_pid_to_score(rank_results_path)
     ground_truth_labels = load_qid_to_pid_to_score(ground_truth_path)
     
@@ -16,6 +16,11 @@ def main(rank_results_path, ground_truth_path, top_k_perc=0.95):
             if score is not None and score < min_score:
                 min_score = score
         gt_min_scores[qid] = min_score
+
+        if remove_positives:
+            for pid in gt_pids[qid]:
+                if pid in hits[qid]:
+                    del hits[qid][pid]
 
     for qid, pid_to_score in hits.items():
         min_score = gt_min_scores.get(qid, float('inf'))
@@ -35,6 +40,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Remove false negatives from hits.")
     parser.add_argument("--rank_results_path", required=True, help="Path to the qrels file")
     parser.add_argument("--ground_truth_path", required=True, help="Path to the ground truth file")
+    parser.add_argument("--top_k_perc", type=float, default=0.95, help="Percentage of the minimum ground truth score to keep")
+    parser.add_argument("--remove_positives", action='store_true', default=False, help="Flag to remove positives")
     
     args = parser.parse_args()
-    main(args.rank_results_path, args.ground_truth_path)
+    main(args.rank_results_path, args.ground_truth_path, top_k_perc=args.top_k_perc, remove_positives=args.remove_positives)
