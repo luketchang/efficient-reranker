@@ -69,3 +69,18 @@ def load_pids_to_passages(corpus_file):
             
             corpus[pid] = passage
     return corpus
+
+def load_qid_to_pid_to_score(qrels_file):
+    qid_to_pid_to_score = {}
+    with open(qrels_file, 'r') as f:
+        for line in f:
+            if line.startswith("query-id"):
+                continue
+
+            qid, pid, score = line.strip().split('\t')
+            score = float(score)
+            
+            if qid not in qid_to_pid_to_score:
+                qid_to_pid_to_score[qid] = {}
+            qid_to_pid_to_score[qid][pid] = score
+    return qid_to_pid_to_score
