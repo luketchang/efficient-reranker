@@ -79,7 +79,7 @@ def main():
     for i, batch in enumerate(tqdm(dataloader, desc="Processing batches")):
         print(f"Processing batch {i}")
         query_ids = batch["ids"]
-        queries = batch["text"]
+        queries = batch["texts"]
 
         # Fetch query embeddings using the API
         query_vectors = fetch_query_embeddings(args.api_url, api_key, queries)
