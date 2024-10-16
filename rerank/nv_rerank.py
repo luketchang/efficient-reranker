@@ -4,9 +4,6 @@ import sys
 import os
 from time import sleep
 from data_utils import load_hits_from_qrels_queries_corpus
-import ftfy
-from unidecode import unidecode
-import re
 from tqdm import tqdm
 
 

@@ -18,6 +18,13 @@
 # need script that loads all query<>positive scores and sends to reranker for score (TODO)
 # pass positive qid->pid->score to dataset so it can put positive score onto rank result (TODO)
 
+# Pipeline: 
+# - qrels, queries, corpus --> positive rankings (TODO)
+# - corpus, queries --> top 1000 embed (DONE: embed/query scripts)
+# - top 1000 embed --> top 200 reranked (DONE: nv_rerank script)
+# - top 200 rerank, positive rankings --> top 200 reranked w/out false negatives (DONE: remove_false_negatives script)
+# - top 200 reranked w/out false negatives, positive rankings --> teacher triples (TODO)
+
 # NOTE: we don't remove false negatives from rerank stage because we may still want to observe their behavior when sent through reranker or measure scoring
 
 from torch.utils.data import Dataset
