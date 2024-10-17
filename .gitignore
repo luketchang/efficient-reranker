@@ -23,3 +23,5 @@ __pycache__
 
 milvus/embedEtcd.yaml
 milvus/user.yaml
+
+.DS_Store

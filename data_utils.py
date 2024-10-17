@@ -55,7 +55,7 @@ def load_qids_to_queries(queries_file):
             queries[qid] = query
     return queries
 
-def load_pids_to_passages(corpus_file):
+def load_pids_to_passages(corpus_file, append_title=True):
     corpus = {}
     with open(corpus_file, 'r') as f:
         for line in f:
@@ -63,9 +63,10 @@ def load_pids_to_passages(corpus_file):
             pid = data["_id"]
             
             # Extract title and text, combining them if the title exists
-            title = data.get("title", "")
-            text = data["text"]
-            passage = title + "\n" + text if title and title.strip() else text
+            passage = data["text"]
+            if append_title:
+                title = data.get("title", "")
+                passage = title + "\n" + passage if title and title.strip() else passage
             
             corpus[pid] = passage
     return corpus
