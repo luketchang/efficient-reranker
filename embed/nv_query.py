@@ -12,7 +12,7 @@ def fetch_query_embeddings(api_url, api_key, queries):
     payload = {
         "model": "nvidia/nv-embedqa-mistral-7b-v2",
         "encoding_format": "float",
-        "truncate": "NONE",
+        "truncate": "END",
         "input": queries,
         "input_type": "query",
         "user": "placeholder"
