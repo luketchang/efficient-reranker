@@ -11,7 +11,7 @@ import argparse
 from collections import defaultdict
 from data_utils import load_pids_to_passages, load_qid_to_pid_to_score
 
-def load_passage_to_pid(corpus_file, n_chars=100):
+def load_passage_to_pid(corpus_file, n_chars=200):
     passage_to_pid = {}
     with open(corpus_file, 'r') as f:
         for line in f:
@@ -63,7 +63,7 @@ if __name__ == "__main__":
     parser.add_argument('--train_qrels_path', type=str, required=True, help='Path to the train qrels file')
     parser.add_argument('--train_corpus_path', type=str, required=True, help='Path to the train corpus file')
     parser.add_argument('--test_corpus_path', type=str, required=True, help='Path to the test corpus file')
-    parser.add_argument('--n_chars', type=int, default=100, help='Number of characters to consider for passage')
+    parser.add_argument('--n_chars', type=int, default=200, help='Number of characters to consider for passage')
     
     args = parser.parse_args()
     main(args.train_qrels_path, args.train_corpus_path, args.test_corpus_path, args.n_chars)
