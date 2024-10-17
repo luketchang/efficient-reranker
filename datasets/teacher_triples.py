@@ -19,7 +19,7 @@
 # pass positive qid->pid->score to dataset so it can put positive score onto rank result (TODO)
 
 # Pipeline: 
-# - qrels, queries, corpus --> positive rankings (TODO)
+# - qrels, queries, corpus --> positive rankings (DONE: existing nv_rerank script)
 # - corpus, queries --> top 1000 embed (DONE: embed/query scripts)
 # - top 1000 embed --> top 200 reranked (DONE: nv_rerank script)
 # - top 200 rerank, positive rankings --> top 200 reranked w/out false negatives (DONE: remove_false_negatives script)
@@ -31,22 +31,23 @@ from torch.utils.data import Dataset
 from data_utils import load_qid_to_pid_to_score, load_pids_to_passages, load_hits_from_qrels_queries_corpus
 
 class TeacherTriplesDataset(Dataset):
-    def __init__(self, queries_path, corpus_path, negative_rank_results_path, ground_truth_path):
-        self.ground_truth = load_qid_to_pid_to_score(ground_truth_path)
+    def __init__(self, queries_path, corpus_path, negative_rank_results_path, positive_rank_results_path):
+        self.positive_rank_results = load_qid_to_pid_to_score(positive_rank_results_path)
         self.corpus = load_pids_to_passages(corpus_path)
-        rank_results = load_hits_from_qrels_queries_corpus(negative_rank_results_path, queries_path, corpus_path)
+        negative_rank_results = load_hits_from_qrels_queries_corpus(negative_rank_results_path, queries_path, corpus_path)
 
         self.negative_rank_results_with_positives = []
-        for rank_results in rank_results:
-            hits = rank_results['hits']
+        for rank_result in negative_rank_results:
+            hits = rank_result['hits']
             qid = hits[0]['qid']
-            if qid in self.ground_truth:
-                for positive_id in self.ground_truth[qid]:
+            if qid in self.positive_rank_results:
+                for positive_id in self.positive_rank_results[qid]:
+                    positive_score = self.positive_rank_results[qid][positive_id]
                     self.negative_rank_results_with_positives.append({
                         "query_id": qid,
-                        "query": rank_results['query'],
+                        "query": rank_result['query'],
                         "positive_id": positive_id,
-                        # "positive_score": "TODO",
+                        "positive_score": positive_score,
                         "hits": hits
                     })
 
@@ -68,7 +69,7 @@ class TeacherTriplesDataset(Dataset):
             "query": query,
             "positive_id": rank_result['positive_id'],
             "positive": self.corpus[rank_result['positive_id']],
-            # TODO: positive_score
+            "positive_score": rank_result['positive_score'],
             "negative_id": hit['docid'],
             "negative": hit['content'],
             "negative_score": hit['score']

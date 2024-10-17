@@ -33,9 +33,6 @@ class RawTextSingleDataset(Dataset):
         ids = [sample['id'] for sample in batch]
         texts = [sample['text'] for sample in batch]
 
-        if self.dataset_type == DatasetType.QUERY:
-            texts = [f'Instruct: Retrieve relevant passages.\nQuery: {text}' for text in texts]
-
         # Ensure that all texts are truncated to maxlen if specified
         if self.max_seq_len:
             texts = [text[:self.max_seq_len] if len(text) > self.max_seq_len else text for text in texts]
