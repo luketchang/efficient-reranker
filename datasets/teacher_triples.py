@@ -1,32 +1,3 @@
-
-# load ground truth positives
-# load top 30-50 reranked (negative) hits
-# treat dataset as one long list of hits
-#  - expand each query into its set of top k hits
-#  - len(dataset) = sum(len(hits) for hits in dataset)
-#  - getitem(idx) returns (idx // num queries) + (idx % num queries)
-
-# load qid --> queries
-# load pid --> passages
-# load rank results as qid --> pid --> score
-# load ground truth as qid --> pid --> score
-
-# get top 1000 embedding rank results (DONE)
-# send all embedding rank results to reranker (DONE)
-# remove false negatives (within 95% of lowest ground truth rerank score) (DONE)
-
-# need script that loads all query<>positive scores and sends to reranker for score (TODO)
-# pass positive qid->pid->score to dataset so it can put positive score onto rank result (TODO)
-
-# Pipeline: 
-# - qrels, queries, corpus --> positive rankings (DONE: existing nv_rerank script)
-# - corpus, queries --> top 1000 embed (DONE: embed/query scripts)
-# - top 1000 embed --> top 200 reranked (DONE: nv_rerank script)
-# - top 200 rerank, positive rankings --> top 200 reranked w/out false negatives (DONE: remove_false_negatives script)
-# - top 200 reranked w/out false negatives, positive rankings --> teacher triples (TODO)
-
-# NOTE: we don't remove false negatives from rerank stage because we may still want to observe their behavior when sent through reranker or measure scoring
-
 import torch
 from torch.utils.data import Dataset
 from data_utils import load_qid_to_pid_to_score, load_pids_to_passages, load_hits_from_qrels_queries_corpus
@@ -89,7 +60,7 @@ class TeacherTriplesDataset(Dataset):
 
         return {
             "positives": tokenized_positives,
-            "positive_scores": torch.tensor(positive_scores),
+            "positive_labels": torch.tensor(positive_scores),
             "negatives": tokenized_negatives,
-            "negative_scores": torch.tensor(negative_scores)
+            "negative_labels": torch.tensor(negative_scores)
         }
