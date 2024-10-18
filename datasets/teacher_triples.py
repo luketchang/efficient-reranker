@@ -27,11 +27,13 @@
 
 # NOTE: we don't remove false negatives from rerank stage because we may still want to observe their behavior when sent through reranker or measure scoring
 
+import torch
 from torch.utils.data import Dataset
 from data_utils import load_qid_to_pid_to_score, load_pids_to_passages, load_hits_from_qrels_queries_corpus
 
 class TeacherTriplesDataset(Dataset):
-    def __init__(self, queries_path, corpus_path, negative_rank_results_path, positive_rank_results_path):
+    def __init__(self, queries_path, corpus_path, negative_rank_results_path, positive_rank_results_path, tokenizer):
+        self.tokenizer = tokenizer
         self.positive_rank_results = load_qid_to_pid_to_score(positive_rank_results_path)
         self.corpus = load_pids_to_passages(corpus_path)
         negative_rank_results = load_hits_from_qrels_queries_corpus(negative_rank_results_path, queries_path, corpus_path)
@@ -73,4 +75,21 @@ class TeacherTriplesDataset(Dataset):
             "negative_id": hit['docid'],
             "negative": hit['content'],
             "negative_score": hit['score']
+        }
+    
+    def collate_fn(self, batch):
+        queries = [item['query'] for item in batch]
+        positive_passages = [item['positive'] for item in batch]
+        positive_scores = [item['positive_score'] for item in batch]
+        negative_passages = [item['negative'] for item in batch]
+        negative_scores = [item['negative_score'] for item in batch]
+
+        tokenized_positives = self.tokenizer(queries, positive_passages, padding=True, return_tensors="pt")
+        tokenized_negatives = self.tokenizer(queries, negative_passages, padding=True, return_tensors="pt")
+
+        return {
+            "positives": tokenized_positives,
+            "positive_scores": torch.tensor(positive_scores),
+            "negatives": tokenized_negatives,
+            "negative_scores": torch.tensor(negative_scores)
         }

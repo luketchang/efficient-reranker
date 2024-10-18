@@ -25,3 +25,5 @@ milvus/embedEtcd.yaml
 milvus/user.yaml
 
 .DS_Store
+nq-train
+nq

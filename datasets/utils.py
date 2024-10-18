@@ -10,7 +10,7 @@ def load_qrels(qrels_path):
         with open(qrels_path, 'r') as file:
             for line in file:
                 qid = line.strip().split()[0]
-                qid = qid.replace("query", "").replace("test", "").replace("train", "").replace("dev", "")
+                qid = strip_prefixes(qid)
                 qids.add(qid)
         return qids
 
@@ -33,7 +33,7 @@ def load_data_from_jsonl(dataset_type, input_path, qrels_filter_path=None, start
                     break
 
                 data = json.loads(line)
-                id = data["_id"].replace("doc", "").replace("test", "").replace("train", "").replace("dev", "")
+                id = strip_prefixes(data["_id"])
                 
                 # Filter queries if QIDs filter is applied
                 if dataset_type == DatasetType.QUERY and qids_filter and id not in qids_filter:
@@ -46,3 +46,6 @@ def load_data_from_jsonl(dataset_type, input_path, qrels_filter_path=None, start
                 data_arr.append({"id": int(id), "text": passage})
 
         return data_arr
+
+def strip_prefixes(id):
+    return id.replace("query", "").replace("doc", "").replace("test", "").replace("train", "").replace("dev", "")
