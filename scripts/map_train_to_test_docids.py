@@ -63,7 +63,7 @@ if __name__ == "__main__":
     parser.add_argument('--train_qrels_path', type=str, required=True, help='Path to the train qrels file')
     parser.add_argument('--train_corpus_path', type=str, required=True, help='Path to the train corpus file')
     parser.add_argument('--test_corpus_path', type=str, required=True, help='Path to the test corpus file')
-    parser.add_argument('--n_chars', type=int, default=200, help='Number of characters to consider for passage')
+    parser.add_argument('--n_chars', type=int, default=512, help='Number of characters to consider for passage')
     
     args = parser.parse_args()
     main(args.train_qrels_path, args.train_corpus_path, args.test_corpus_path, args.n_chars)
