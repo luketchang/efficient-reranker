@@ -130,7 +130,6 @@ def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, n
     accelerator.end_training()
 
 def main():
-    # Argument parsing
     parser = argparse.ArgumentParser(description="Training script")
     
     parser.add_argument("--model_name", type=str, required=True, help="Model name to load")
@@ -141,7 +140,12 @@ def main():
     parser.add_argument("--num_epochs", type=int, default=3, required=False, help="Number of epochs for training")
     parser.add_argument("--batch_size_per_gpu", type=int, default=8, required=False, help="Batch size per GPU")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility (optional, default=42)")
-    
+    parser.add_argument("--queries_path", type=str, required=True, help="Path to the queries JSONL file")
+    parser.add_argument("--corpus_path", type=str, required=True, help="Path to the corpus JSONL file")
+    parser.add_argument("--train_positive_rank_results_path", type=str, required=True, help="Path to the train positive rank results file")
+    parser.add_argument("--train_negative_rank_results_path", type=str, required=True, help="Path to the train negative rank results file")
+    parser.add_argument("--eval_positive_rank_results_path", type=str, required=True, help="Path to the eval positive rank results file")
+    parser.add_argument("--eval_negative_rank_results_path", type=str, required=True, help="Path to the eval negative rank results file")
     parser.add_argument("--eval_every_n_batches", type=int, default=5, help="Evaluate model every n batches (optional, default=32)")
     parser.add_argument("--model_bf16", type=str, default=None, help="Load model in bf16")
     parser.add_argument("--mixed_precision", type=str, default=None, help="Mixed precision (fp16, bf16)")
@@ -150,7 +154,6 @@ def main():
 
     args = parser.parse_args()
 
-    # Call the training loop with parsed arguments
     training_loop(
         model_name=args.model_name,
         checkpoint_path=args.checkpoint_path,
@@ -160,8 +163,12 @@ def main():
         num_epochs=args.num_epochs,
         batch_size=args.batch_size_per_gpu,
         seed=args.seed,
-        train_path=args.train_file_path,
-        eval_path=args.eval_file_path,
+        queries_path=args.queries_path,
+        corpus_path=args.corpus_path,
+        train_positive_rank_results_path=args.train_positive_rank_results_path,
+        train_negative_rank_results_path=args.train_negative_rank_results_path,
+        eval_positive_rank_results_path=args.eval_positive_rank_results_path,
+        eval_negative_rank_results_path=args.eval_negative_rank_results_path,
         eval_every_n_batches=args.eval_every_n_batches,
         model_bf16=args.model_bf16,
         mixed_precision=args.mixed_precision,
