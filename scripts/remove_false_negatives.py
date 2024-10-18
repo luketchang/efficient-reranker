@@ -22,12 +22,14 @@ def main(rank_results_path, ground_truth_path, top_k_perc=0.95, remove_positives
                 if pid in hits[qid]:
                     del hits[qid][pid]
 
+    deleted_count = 0
     for qid, pid_to_score in hits.items():
         min_score = gt_min_scores.get(qid, float('inf'))
         for pid, score in list(pid_to_score.items()):
             if pid in gt_pids.get(qid, set()):
                 continue  # Do not delete ground truth pids
             if score >= top_k_perc * min_score:
+                deleted_count += 1
                 del hits[qid][pid]
 
     output_path = rank_results_path.replace(".tsv", "_filtered.tsv")
@@ -36,6 +38,8 @@ def main(rank_results_path, ground_truth_path, top_k_perc=0.95, remove_positives
             for pid, score in pid_to_score.items():
                 f.write(f"{qid}\t{pid}\t{score}\n")
 
+    print(f"Filtered hits saved to {output_path}")
+    print(f"Deleted {deleted_count} hits")
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Remove false negatives from hits.")
     parser.add_argument("--rank_results_path", required=True, help="Path to the qrels file")
