@@ -17,9 +17,12 @@ def evaluate_model_by_loss(model, eval_data_loader, loss_fn, accelerator):
             # Forward pass
             positive_outs = model(**positives)
             negative_outs = model(**negatives)
+
+            positive_logits = positive_outs.logits
+            negative_logits = negative_outs.logits
             
             # Calculate loss
-            loss = loss_fn(positive_outs, negative_outs, positive_labels, negative_labels)
+            loss = loss_fn(positive_logits, negative_logits, positive_labels, negative_labels)
 
             # Gather the loss across all processes
             accelerator.print("Gathering losses")

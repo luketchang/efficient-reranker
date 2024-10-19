@@ -12,6 +12,7 @@ from train_step import train_step
 from evaluations import evaluate_model_by_loss
 from torch.optim import AdamW
 from loss import MSEMarginLoss
+from tqdm import tqdm
 
 def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, queries_path, corpus_path, train_positive_rank_results_path, train_negative_rank_results_path, eval_positive_rank_results_path, eval_negative_rank_results_path, eval_every_n_batches, model_bf16, mixed_precision, use_ds, ds_config_path):
     save_path = f'new-{model_name}'
@@ -85,7 +86,7 @@ def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, n
     # Now we train the model
     for epoch in range(num_epochs):
         model.train()
-        for step, batch in enumerate(train_data_loader, start=1):
+        for step, batch in tqdm(enumerate(train_data_loader, start=1)):
             accelerator.print(f"Processing batch {step}/{len(train_data_loader)}")
             avg_train_loss = train_step(model, batch, loss_function, optimizer, accelerator, gradient_accumulation_steps, global_step)
             if accelerator.is_main_process:
