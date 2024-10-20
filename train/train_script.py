@@ -86,7 +86,7 @@ def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, n
     # Now we train the model
     for epoch in range(num_epochs):
         model.train()
-        for step, batch in tqdm(enumerate(train_data_loader, start=1)):
+        for step, batch in enumerate(train_data_loader, start=1):
             accelerator.print(f"Processing batch {step}/{len(train_data_loader)}")
             avg_train_loss = train_step(model, batch, loss_function, optimizer, accelerator, gradient_accumulation_steps, global_step)
             if accelerator.is_main_process:
@@ -135,9 +135,9 @@ def main():
     
     parser.add_argument("--model_name", type=str, required=True, help="Model name to load")
     parser.add_argument("--checkpoint_path", type=str, required=False, help="Path to the checkpoint to resume training from")
-    parser.add_argument("--lr", type=float, default=0.0002, required=False, help="Learning rate for the optimizer")
+    parser.add_argument("--lr", type=float, default=0.0003, required=False, help="Learning rate for the optimizer")
     parser.add_argument("--weight_decay", type=float, default=0.001, required=False, help="Weight decay for optimizer")
-    parser.add_argument("--dropout_prob", type=float, default=0.1, required=False, help="Dropout probability")
+    parser.add_argument("--dropout_prob", type=float, default=0, required=False, help="Dropout probability")
     parser.add_argument("--num_epochs", type=int, default=3, required=False, help="Number of epochs for training")
     parser.add_argument("--batch_size_per_gpu", type=int, default=8, required=False, help="Batch size per GPU")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility (optional, default=42)")
