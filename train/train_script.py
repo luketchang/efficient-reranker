@@ -12,7 +12,6 @@ from train_step import train_step
 from evaluations import evaluate_model_by_ndcg
 from torch.optim import AdamW
 from loss import MSEMarginLoss
-from tqdm import tqdm
 
 def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, queries_path, corpus_path, train_positive_rank_results_path, train_negative_rank_results_path, eval_positive_rank_results_path, eval_negative_rank_results_path, eval_every_n_batches, model_bf16, mixed_precision, use_ds, ds_config_path):
     save_path = f'new-{model_name}'
