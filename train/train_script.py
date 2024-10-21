@@ -14,7 +14,7 @@ from evaluations import evaluate_model_by_ndcg
 from torch.optim import AdamW
 from loss import MSEMarginLoss
 
-def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, queries_path, corpus_path, train_positive_rank_results_path, train_negative_rank_results_path, eval_rank_results_path, eval_qrels_path, eval_queries_path, eval_every_n_batches, model_bf16, mixed_precision, use_ds, ds_config_path):
+def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, queries_path, corpus_path, train_positive_rank_results_path, train_negative_rank_results_path, eval_rank_results_path, eval_qrels_path, eval_queries_path, eval_every_n_batches, model_bf16, mixed_precision, grad_accumulation_steps, grad_clip_max_norm, use_ds, ds_config_path):
     save_path = f'new-{model_name}'
 
     deepspeed_plugin = DeepSpeedPlugin(
@@ -88,7 +88,7 @@ def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, n
         model.train()
         for step, batch in enumerate(train_data_loader, start=1):
             accelerator.print(f"Processing batch {step}/{len(train_data_loader)}")
-            avg_train_loss = train_step(model, batch, loss_function, optimizer, accelerator, gradient_accumulation_steps, global_step)
+            avg_train_loss = train_step(model, batch, loss_function, optimizer, accelerator, grad_accumulation_steps, grad_clip_max_norm, global_step)
             if accelerator.is_main_process:
                 accelerator.print(f'Avg train loss: {avg_train_loss:.4g}')
                 writer.add_scalar('Loss/train', avg_train_loss, global_step)
@@ -154,6 +154,8 @@ def main():
     parser.add_argument("--eval_every_n_batches", type=int, default=5, help="Evaluate model every n batches (optional, default=32)")
     parser.add_argument("--model_bf16", type=str, default=None, help="Load model in bf16")
     parser.add_argument("--mixed_precision", type=str, default=None, help="Mixed precision (fp16, bf16)")
+    parser.add_argument("--grad_accumulation_steps", type=int, default=1, help="Number of gradient accumulation steps")
+    parser.add_argument("--grad_clip_max_norm", type=float, default=1.0, help="Max norm for gradient clipping")
     parser.add_argument("--use_ds", type=str, default=None, help="Use DeepSpeed")
     parser.add_argument("--ds_config_path", type=str, required=False, help="Deepspeed config file")
 
@@ -178,6 +180,8 @@ def main():
         eval_every_n_batches=args.eval_every_n_batches,
         model_bf16=args.model_bf16,
         mixed_precision=args.mixed_precision,
+        grad_accumulation_steps=args.grad_accumulation_steps,
+        grad_clip_max_norm=args.grad_clip_max_norm,
         use_ds=args.use_ds,
         ds_config_path=args.ds_config_path
     )

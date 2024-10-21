@@ -1,4 +1,4 @@
-def train_step(model, batch, loss_fn, optimizer, accelerator, gradient_accumulation_steps, global_step):
+def train_step(model, batch, loss_fn, optimizer, accelerator, gradient_accumulation_steps, grad_clip_max_norm, global_step):
     # Extract inputs and labels from batch
     positives = batch["positives"]
     negatives = batch["negatives"]
@@ -20,7 +20,7 @@ def train_step(model, batch, loss_fn, optimizer, accelerator, gradient_accumulat
     accelerator.backward(loss)
     
     # Apply gradient clipping for stability
-    accelerator.clip_grad_norm_(model.parameters(), max_norm=1.0)
+    accelerator.clip_grad_norm_(model.parameters(), max_norm=grad_clip_max_norm)
     
     if global_step % gradient_accumulation_steps == 0:
         optimizer.step()
