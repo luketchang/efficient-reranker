@@ -9,7 +9,7 @@ import argparse
 from datasets.teacher_triples import TeacherTriplesDataset
 from checkpoint_utils import save_global_step, load_global_step, load_best_eval_metric, save_new_checkpoint_and_delete_old, checkpoint_path_to_prefix
 from train_step import train_step
-from evaluations import evaluate_model_by_loss
+from evaluations import evaluate_model_by_ndcg
 from torch.optim import AdamW
 from loss import MSEMarginLoss
 from tqdm import tqdm
@@ -76,9 +76,9 @@ def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, n
     loss_function = MSEMarginLoss()
 
     # Load best eval loss and global step
-    best_avg_eval_loss = load_best_eval_metric(checkpoint_path, is_loss=True)
+    best_eval_metric = load_best_eval_metric(checkpoint_path, is_loss=False)
     global_step = load_global_step()
-    accelerator.print(f"Best evaluation loss so far: {best_avg_eval_loss}")
+    accelerator.print(f"Best evaluation metric so far: {best_eval_metric}")
     accelerator.print(f"Starting at global step: {global_step}")
 
     checkpoint_prefix = checkpoint_path_to_prefix(checkpoint_path) if checkpoint_path else None
@@ -95,20 +95,19 @@ def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, n
 
             if step % eval_every_n_batches == 0 and step > 0:
                 accelerator.print("Evaluating model")
-                avg_eval_loss = evaluate_model_by_loss(model, eval_data_loader, loss_function, accelerator)
+                eval_ndcg = evaluate_model_by_ndcg(model, eval_data_loader, accelerator)
                 accelerator.print("Evaluated model")
 
                 if accelerator.is_main_process:
-                    accelerator.print(f'Avg evaluation loss: {avg_eval_loss:.4g}')
-                    writer.add_scalar('Loss/eval', avg_eval_loss, global_step)
+                    accelerator.print(f'Avg ndcg: {eval_ndcg:.4g}')
+                    writer.add_scalar('ndcg/eval', eval_ndcg, global_step)
 
-                if avg_eval_loss < best_avg_eval_loss:
+                if eval_ndcg > best_eval_metric:
                     new_checkpoint_prefix = f'{save_path}-step-{global_step}'
-                    save_new_checkpoint_and_delete_old(accelerator, model, avg_eval_loss, new_checkpoint_prefix, checkpoint_prefix)
+                    save_new_checkpoint_and_delete_old(accelerator, model, eval_ndcg, new_checkpoint_prefix, checkpoint_prefix)
 
                     checkpoint_prefix = new_checkpoint_prefix
-                    best_avg_eval_loss = avg_eval_loss
-                
+                    best_eval_metric = eval_ndcg
 
             global_step += 1
         
@@ -116,13 +115,17 @@ def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, n
         accelerator.wait_for_everyone()
 
         accelerator.print("Evaluating model at the end of the epoch")
-        avg_eval_loss = evaluate_model_by_loss(model, eval_data_loader, loss_function, accelerator)
-        if avg_eval_loss < best_avg_eval_loss:
+        eval_ndcg = evaluate_model_by_ndcg(model, eval_data_loader, accelerator)
+        if accelerator.is_main_process:
+            accelerator.print(f'Avg ndcg: {eval_ndcg:.4g}')
+            writer.add_scalar('ndcg/eval', eval_ndcg, global_step)
+
+        if eval_ndcg > best_eval_metric:
             new_checkpoint_prefix = f'{save_path}-step-{global_step}'
-            save_new_checkpoint_and_delete_old(accelerator, model, avg_eval_loss, new_checkpoint_prefix, checkpoint_prefix)
+            save_new_checkpoint_and_delete_old(accelerator, model, eval_ndcg, new_checkpoint_prefix, checkpoint_prefix)
 
             checkpoint_prefix = new_checkpoint_prefix
-            best_avg_eval_loss = avg_eval_loss
+            best_eval_metric = eval_ndcg
         
         accelerator.wait_for_everyone()
         

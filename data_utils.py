@@ -85,3 +85,6 @@ def load_qid_to_pid_to_score(qrels_file):
                 qid_to_pid_to_score[qid] = {}
             qid_to_pid_to_score[qid][pid] = score
     return qid_to_pid_to_score
+
+def strip_prefixes(id):
+    return id.replace("query", "").replace("doc", "").replace("test", "").replace("train", "").replace("dev", "")

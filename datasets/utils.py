@@ -1,5 +1,6 @@
 from enum import Enum
 import json
+from data_utils import strip_prefixes
 
 class DatasetType(Enum):
     QUERY = 0,
@@ -46,6 +47,3 @@ def load_data_from_jsonl(dataset_type, input_path, qrels_filter_path=None, start
                 data_arr.append({"id": int(id), "text": passage})
 
         return data_arr
-
-def strip_prefixes(id):
-    return id.replace("query", "").replace("doc", "").replace("test", "").replace("train", "").replace("dev", "")

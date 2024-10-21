@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import Dataset
-from data_utils import load_qid_to_pid_to_score, load_pids_to_passages, load_hits_from_qrels_queries_corpus
+from data_utils import load_qid_to_pid_to_score, load_pids_to_passages, load_hits_from_qrels_queries_corpus, strip_prefixes
 
 class TeacherTriplesDataset(Dataset):
     def __init__(self, queries_path, corpus_path, negative_rank_results_path, positive_rank_results_path, tokenizer):
@@ -39,6 +39,7 @@ class TeacherTriplesDataset(Dataset):
         query = rank_result['query']
         hit = rank_result['hits'][hit_idx]
         return {
+            "query_id": rank_result['query_id'],
             "query": query,
             "positive_id": rank_result['positive_id'],
             "positive": self.corpus[rank_result['positive_id']],
@@ -49,9 +50,12 @@ class TeacherTriplesDataset(Dataset):
         }
     
     def collate_fn(self, batch):
+        query_ids = [float(strip_prefixes(item['query_id'])) for item in batch]
         queries = [item['query'] for item in batch]
+        positive_ids = [float(strip_prefixes(item['positive_id'])) for item in batch]
         positive_passages = [item['positive'] for item in batch]
         positive_scores = [item['positive_score'] for item in batch]
+        negative_ids = [float(strip_prefixes(item['negative_id'])) for item in batch]
         negative_passages = [item['negative'] for item in batch]
         negative_scores = [item['negative_score'] for item in batch]
 
@@ -59,8 +63,11 @@ class TeacherTriplesDataset(Dataset):
         tokenized_negatives = self.tokenizer(queries, negative_passages, padding=True, return_tensors="pt")
 
         return {
+            "query_ids": torch.tensor(query_ids),
+            "positive_ids": torch.tensor(positive_ids),
             "positives": tokenized_positives,
             "positive_labels": torch.tensor(positive_scores),
+            "negative_ids": torch.tensor(negative_ids),
             "negatives": tokenized_negatives,
             "negative_labels": torch.tensor(negative_scores)
         }
