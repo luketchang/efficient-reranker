@@ -1,7 +1,6 @@
 import torch
 import torchmetrics
 import torchmetrics.retrieval
-from collections import defaultdict
 
 def evaluate_model_by_loss(model, eval_data_loader, loss_fn, accelerator):
     model.eval()
@@ -50,7 +49,9 @@ def evaluate_model_by_ndcg(model, eval_data_loader, accelerator):
     all_indexes = []
 
     with torch.no_grad():
-        for batch in eval_data_loader:
+        for i, batch in enumerate(eval_data_loader):
+            accelerator.print(f"Processing batch {i}/{len(eval_data_loader)}")
+
             qids = batch["qids"]
             labels = batch["labels"]
             pairs = batch["pairs"]

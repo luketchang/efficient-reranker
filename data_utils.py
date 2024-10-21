@@ -1,6 +1,6 @@
 import json
 
-def load_hits_from_qrels_queries_corpus(qrels_file, queries_file, corpus_file=None):
+def load_hits_from_qrels_queries_corpus(qrels_file, queries_file, corpus_file=None, n_hits_per_query=None):
     print(f"Loading qids from '{queries_file}'")
     queries = load_qids_to_queries(queries_file)
 
@@ -39,6 +39,10 @@ def load_hits_from_qrels_queries_corpus(qrels_file, queries_file, corpus_file=No
             results[qid]['hits'], 
             key=lambda x: -x['score']  # Sort hits by score in descending order
         )
+
+        if n_hits_per_query is not None:
+            sorted_hits = sorted_hits[:n_hits_per_query]
+
         rank_results.append({
             'query': results[qid]['query'],
             'hits': sorted_hits
