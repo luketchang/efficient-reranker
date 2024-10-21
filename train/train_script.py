@@ -7,13 +7,14 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import os
 import argparse
 from datasets.teacher_triples import TeacherTriplesDataset
+from datasets.query_passage_pair import QueryPassagePairDataset
 from checkpoint_utils import save_global_step, load_global_step, load_best_eval_metric, save_new_checkpoint_and_delete_old, checkpoint_path_to_prefix
 from train_step import train_step
 from evaluations import evaluate_model_by_ndcg
 from torch.optim import AdamW
 from loss import MSEMarginLoss
 
-def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, queries_path, corpus_path, train_positive_rank_results_path, train_negative_rank_results_path, eval_positive_rank_results_path, eval_negative_rank_results_path, eval_every_n_batches, model_bf16, mixed_precision, use_ds, ds_config_path):
+def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, queries_path, corpus_path, train_positive_rank_results_path, train_negative_rank_results_path, eval_rank_results_path, eval_qrels_path, eval_every_n_batches, model_bf16, mixed_precision, use_ds, ds_config_path):
     save_path = f'new-{model_name}'
 
     deepspeed_plugin = DeepSpeedPlugin(
@@ -38,7 +39,7 @@ def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, n
     accelerator.print(f"train data loader len: {len(train_data_loader)}")
 
     # Load eval data
-    eval_dataset = TeacherTriplesDataset(queries_path, corpus_path, positive_rank_results_path=eval_positive_rank_results_path, negative_rank_results_path=eval_negative_rank_results_path, tokenizer=tokenizer)
+    eval_dataset = QueryPassagePairDataset(queries_path, corpus_path, rank_results_path=eval_rank_results_path, qrels_path=eval_qrels_path, tokenizer=tokenizer)
     eval_data_loader = DataLoader(eval_dataset, batch_size=batch_size, collate_fn=eval_dataset.collate_fn)
     
     # Instantiate the model
@@ -138,8 +139,8 @@ def main():
     parser.add_argument("--model_name", type=str, required=True, help="Model name to load")
     parser.add_argument("--checkpoint_path", type=str, required=False, help="Path to the checkpoint to resume training from")
     parser.add_argument("--lr", type=float, default=0.0003, required=False, help="Learning rate for the optimizer")
-    parser.add_argument("--weight_decay", type=float, default=0.001, required=False, help="Weight decay for optimizer")
-    parser.add_argument("--dropout_prob", type=float, default=0, required=False, help="Dropout probability")
+    parser.add_argument("--weight_decay", type=float, default=0.01, required=False, help="Weight decay for optimizer")
+    parser.add_argument("--dropout_prob", type=float, default=0.1, required=False, help="Dropout probability")
     parser.add_argument("--num_epochs", type=int, default=3, required=False, help="Number of epochs for training")
     parser.add_argument("--batch_size_per_gpu", type=int, default=8, required=False, help="Batch size per GPU")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility (optional, default=42)")
@@ -147,8 +148,8 @@ def main():
     parser.add_argument("--corpus_path", type=str, required=True, help="Path to the corpus JSONL file")
     parser.add_argument("--train_positive_rank_results_path", type=str, required=True, help="Path to the train positive rank results file")
     parser.add_argument("--train_negative_rank_results_path", type=str, required=True, help="Path to the train negative rank results file")
-    parser.add_argument("--eval_positive_rank_results_path", type=str, required=True, help="Path to the eval positive rank results file")
-    parser.add_argument("--eval_negative_rank_results_path", type=str, required=True, help="Path to the eval negative rank results file")
+    parser.add_argument("--eval_rank_results_path", type=str, required=True, help="Path to the eval positive rank results file")
+    parser.add_argument("--eval_qrels_path", type=str, required=True, help="Path to the eval negative rank results file")
     parser.add_argument("--eval_every_n_batches", type=int, default=5, help="Evaluate model every n batches (optional, default=32)")
     parser.add_argument("--model_bf16", type=str, default=None, help="Load model in bf16")
     parser.add_argument("--mixed_precision", type=str, default=None, help="Mixed precision (fp16, bf16)")
@@ -170,8 +171,8 @@ def main():
         corpus_path=args.corpus_path,
         train_positive_rank_results_path=args.train_positive_rank_results_path,
         train_negative_rank_results_path=args.train_negative_rank_results_path,
-        eval_positive_rank_results_path=args.eval_positive_rank_results_path,
-        eval_negative_rank_results_path=args.eval_negative_rank_results_path,
+        eval_positive_rank_results_path=args.eval_rank_results_path,
+        eval_negative_rank_results_path=args.eval_qrels_path,
         eval_every_n_batches=args.eval_every_n_batches,
         model_bf16=args.model_bf16,
         mixed_precision=args.mixed_precision,

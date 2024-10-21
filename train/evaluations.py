@@ -49,32 +49,18 @@ def evaluate_model_by_ndcg(model, eval_data_loader, accelerator):
     all_labels = []
     all_indexes = []
 
-    included_positives = defaultdict(set)
     with torch.no_grad():
         for batch in eval_data_loader:
-            query_ids = batch["query_ids"]
-            positive_ids = batch["positive_ids"]
-
-            positives = batch["positives"]
-            negatives = batch["negatives"]
+            qids = batch["qids"]
+            labels = batch["labels"]
+            pairs = batch["pairs"]
             
-            positive_outs = model(**positives)
-            negative_outs = model(**negatives)
+            outputs = model(**pairs)
+            output_logits = outputs.logits
 
-            positive_logits = positive_outs.logits
-            negative_logits = negative_outs.logits
-
-            preds_for_batch = negative_logits.clone().squeeze(1)
-            labels_for_batch = torch.zeros_like(negative_logits).squeeze(1)
-            indexes_for_batch = query_ids.clone().long()
-            one = torch.tensor([1]).to(labels_for_batch.device)
-
-            for i, positive_id in enumerate(positive_ids):
-                if positive_id not in included_positives[query_ids[i]]:
-                    preds_for_batch = torch.cat((positive_logits[i], preds_for_batch))
-                    labels_for_batch = torch.cat((one, labels_for_batch))
-                    indexes_for_batch = torch.cat((query_ids[i].unsqueeze(0), indexes_for_batch))
-                    included_positives[query_ids[i]].add(positive_id)
+            preds_for_batch = output_logits.squeeze(1)
+            labels_for_batch = labels.long()
+            indexes_for_batch = qids.long()
 
             all_preds.append(preds_for_batch)
             all_labels.append(labels_for_batch)
