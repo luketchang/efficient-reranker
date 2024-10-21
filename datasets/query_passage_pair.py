@@ -28,8 +28,8 @@ class QueryPassagePairDataset(Dataset):
         return self.pairs[idx]
     
     def collate_fn(self, batch):
-        qids = [float(strip_prefixes(item['qid'])) for item in batch]
-        pids = [float(strip_prefixes(item['pid'])) for item in batch]
+        qids = [int(strip_prefixes(item['qid'])) for item in batch]
+        pids = [int(strip_prefixes(item['pid'])) for item in batch]
         queries = [item['query'] for item in batch]
         passages = [item['passage'] for item in batch]
 
