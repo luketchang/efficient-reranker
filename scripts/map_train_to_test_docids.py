@@ -49,7 +49,7 @@ def main(train_qrels_path, train_corpus_path, test_corpus_path, n_chars):
         if count >= 100:
             break
 
-    output_file = train_qrels_path.replace('.tsv', '_mapped.tsv')
+    output_file = train_qrels_path.replace('.tsv', f'_mapped_{n_chars}.tsv')
     with open(output_file, 'w') as f:
         for qid, pid_to_score in mapped_qid_to_pid_to_score.items():
             for pid, score in pid_to_score.items():

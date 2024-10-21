@@ -66,7 +66,7 @@ def evaluate_model_by_ndcg(model, eval_data_loader, accelerator):
 
             preds_for_batch = negative_logits.clone().squeeze(1)
             labels_for_batch = torch.zeros_like(negative_logits).squeeze(1)
-            indexes_for_batch = query_ids.clone()
+            indexes_for_batch = query_ids.clone().long()
             one = torch.tensor([1]).to(labels_for_batch.device)
 
             for i, positive_id in enumerate(positive_ids):
@@ -83,8 +83,9 @@ def evaluate_model_by_ndcg(model, eval_data_loader, accelerator):
     # combine subarrays into single tensor
     all_preds = torch.cat(all_preds)
     all_labels = torch.cat(all_labels)
-    all_indexes = torch.cat(all_indexes)
+    all_indexes = torch.cat(all_indexes).long()
 
+    accelerator.print("Gathering losses")
     all_preds = accelerator.gather(all_preds)
     all_labels = accelerator.gather(all_labels)
     all_indexes = accelerator.gather(all_indexes)
