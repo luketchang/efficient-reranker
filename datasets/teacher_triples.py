@@ -3,11 +3,13 @@ from torch.utils.data import Dataset
 from data_utils import load_qid_to_pid_to_score, load_pids_to_passages, load_hits_from_qrels_queries_corpus, strip_prefixes
 
 class TeacherTriplesDataset(Dataset):
-    def __init__(self, queries_path, corpus_path, negative_rank_results_path, positive_rank_results_path, tokenizer):
+    def __init__(self, queries_path, corpus_path, negative_rank_results_path, positive_rank_results_path, tokenizer, max_seq_len=None):
         self.tokenizer = tokenizer
         self.positive_rank_results = load_qid_to_pid_to_score(positive_rank_results_path)
         self.corpus = load_pids_to_passages(corpus_path)
         negative_rank_results = load_hits_from_qrels_queries_corpus(negative_rank_results_path, queries_path, corpus_path)
+        self.max_seq_len = max_seq_len
+        self.truncation = max_seq_len is not None
 
         self.negative_rank_results_with_positives = []
         for rank_result in negative_rank_results:
@@ -59,8 +61,8 @@ class TeacherTriplesDataset(Dataset):
         negative_passages = [item['negative'] for item in batch]
         negative_scores = [item['negative_score'] for item in batch]
 
-        tokenized_positives = self.tokenizer(queries, positive_passages, padding=True, return_tensors="pt")
-        tokenized_negatives = self.tokenizer(queries, negative_passages, padding=True, return_tensors="pt")
+        tokenized_positives = self.tokenizer(queries, positive_passages, padding=True, truncation= self.truncation, return_tensors="pt", max_length=self.max_seq_len)
+        tokenized_negatives = self.tokenizer(queries, negative_passages, padding=True, truncation= self.truncation, return_tensors="pt", max_length=self.max_seq_len)
 
         return {
             "query_ids": torch.tensor(query_ids),

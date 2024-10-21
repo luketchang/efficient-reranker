@@ -64,13 +64,15 @@ def evaluate_model_by_ndcg(model, eval_data_loader, accelerator):
             positive_logits = positive_outs.logits
             negative_logits = negative_outs.logits
 
-            preds_for_batch = negative_logits.clone()
-            labels_for_batch = torch.zeros_like(negative_logits)
+            preds_for_batch = negative_logits.clone().squeeze(1)
+            labels_for_batch = torch.zeros_like(negative_logits).squeeze(1)
             indexes_for_batch = query_ids.clone()
+            one = torch.tensor([1]).to(labels_for_batch.device)
+
             for i, positive_id in enumerate(positive_ids):
                 if positive_id not in included_positives[query_ids[i]]:
-                    preds_for_batch = torch.cat((positive_logits[i].unsqueeze(0), preds_for_batch))
-                    labels_for_batch = torch.cat((torch.tensor([1]), labels_for_batch))
+                    preds_for_batch = torch.cat((positive_logits[i], preds_for_batch))
+                    labels_for_batch = torch.cat((one, labels_for_batch))
                     indexes_for_batch = torch.cat((query_ids[i].unsqueeze(0), indexes_for_batch))
                     included_positives[query_ids[i]].add(positive_id)
 
