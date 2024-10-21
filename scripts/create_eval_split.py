@@ -3,7 +3,7 @@ import json
 from data_utils import load_qid_to_pid_to_score, load_qids_to_queries, strip_prefixes
 import argparse
 
-def main(qrels_path, queries_path, corpus_path, initial_rank_results_path, n_queries, n_hits_per_query):
+def main(qrels_path, queries_path, initial_rank_results_path, n_queries, n_hits_per_query):
     qrels = load_qid_to_pid_to_score(qrels_path)
     queries = load_qids_to_queries(queries_path)
     rank_results = load_qid_to_pid_to_score(initial_rank_results_path)
@@ -59,7 +59,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Create evaluation split from qrels, queries, and initial rank results.")
     parser.add_argument("--qrels_path", type=str, required=True, help="Path to the qrels file.")
     parser.add_argument("--queries_path", type=str, required=True, help="Path to the queries file.")
-    parser.add_argument("--corpus_path", type=str, required=True, help="Path to the corpus file.")
     parser.add_argument("--initial_rank_results_path", type=str, required=True, help="Path to the initial rank results file.")
     parser.add_argument("--n_queries", type=int, required=True, help="Number of queries to sample.")
     parser.add_argument("--n_hits_per_query", type=int, required=True, help="Number of hits per query.")
@@ -69,7 +68,6 @@ if __name__ == "__main__":
     main(
         qrels_path=args.qrels_path,
         queries_path=args.queries_path,
-        corpus_path=args.corpus_path,
         initial_rank_results_path=args.initial_rank_results_path,
         n_queries=args.n_queries,
         n_hits_per_query=args.n_hits_per_query

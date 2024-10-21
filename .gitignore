@@ -27,3 +27,5 @@ milvus/user.yaml
 .DS_Store
 nq-train
 nq
+
+!*.md
