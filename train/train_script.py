@@ -3,7 +3,8 @@ from torch.utils.data import DataLoader
 from accelerate import Accelerator, DeepSpeedPlugin
 from transformers import AutoTokenizer, set_seed
 from torch.utils.tensorboard import SummaryWriter
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import AutoTokenizer
+from models.deberta_v3_reranker import DeBERTaReranker
 import os
 import argparse
 from datasets.teacher_triples import TeacherTriplesDataset
@@ -14,7 +15,7 @@ from evaluations import evaluate_model_by_ndcg
 from torch.optim import AdamW
 from loss import MSEMarginLoss
 
-def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, queries_path, corpus_path, train_positive_rank_results_path, train_negative_rank_results_path, eval_rank_results_path, eval_qrels_path, eval_queries_path, eval_every_n_batches, model_bf16, mixed_precision, grad_accumulation_steps, grad_clip_max_norm, use_ds, ds_config_path):
+def training_loop(model_name, pooling, checkpoint_path, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, queries_path, corpus_path, train_positive_rank_results_path, train_negative_rank_results_path, eval_rank_results_path, eval_qrels_path, eval_queries_path, eval_every_n_batches, model_bf16, mixed_precision, grad_accumulation_steps, grad_clip_max_norm, use_ds, ds_config_path):
     save_path = f'new-{model_name}'
 
     deepspeed_plugin = DeepSpeedPlugin(
@@ -32,10 +33,9 @@ def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, n
     set_seed(seed)
 
     # Instantiate the model
+    model = DeBERTaReranker(model_name, pooling)
     if model_bf16:
-        model = AutoModelForSequenceClassification.from_pretrained(model_name, torch_dtype=torch.bfloat16, num_labels=1)
-    else:
-        model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=1)
+        model = model.to(torch.bfloat16)
     
     model.config.attention_dropout = dropout_prob
     model.config.resid_pdrop = dropout_prob
@@ -136,6 +136,7 @@ def main():
     parser = argparse.ArgumentParser(description="Training script")
     
     parser.add_argument("--model_name", type=str, required=True, help="Model name to load")
+    parser.add_argument("--pooling", type=str, default="mean", required=False, help="Pooling strategy for the model")
     parser.add_argument("--checkpoint_path", type=str, required=False, help="Path to the checkpoint to resume training from")
     parser.add_argument("--lr", type=float, default=0.00002, required=False, help="Learning rate for the optimizer")
     parser.add_argument("--weight_decay", type=float, default=0.01, required=False, help="Weight decay for optimizer")
@@ -162,6 +163,7 @@ def main():
 
     training_loop(
         model_name=args.model_name,
+        pooling=args.pooling,
         checkpoint_path=args.checkpoint_path,
         lr=args.lr,
         weight_decay=args.weight_decay,
