@@ -5,13 +5,13 @@ from accelerate import Accelerator
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from datasets.query_passage_pair import QueryPassagePairDataset
 
-def main(model_name, checkpoint_path, rank_results_path, queries_path, corpus_path, batch_size, output_path, qid_prefix, pid_prefix):
+def main(model_name, checkpoint_path, qrels_path, rank_results_path, queries_path, corpus_path, batch_size, output_path, qid_prefix, pid_prefix):
     accelerator = Accelerator(device_placement=True)
 
     model = AutoModelForSequenceClassification.from_pretrained(checkpoint_path, num_labels=1)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    dataset = QueryPassagePairDataset(queries_path, corpus_path, rank_results_path, tokenizer, max_seq_len=model.config.max_position_embeddings)
+    dataset = QueryPassagePairDataset(queries_path, corpus_path, rank_results_path, qrels_path, tokenizer=tokenizer, max_seq_len=model.config.max_position_embeddings)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, collate_fn=dataset.collate_fn)
 
     model, dataloader = accelerator.prepare(model, dataloader)
@@ -46,6 +46,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_name", type=str, required=True, help="Name of the pre-trained model")
     parser.add_argument("--checkpoint_path", type=str, required=True, help="Path to the model checkpoint")
     parser.add_argument("--rank_results_path", type=str, required=True, help="Path to the rank results file")
+    parser.add_argument("--qrels_path", type=str, required=True, help="Path to the qrels file path")
     parser.add_argument("--queries_path", type=str, required=True, help="Path to the queries file")
     parser.add_argument("--corpus_path", type=str, required=True, help="Path to the corpus file")
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size for processing")
@@ -59,6 +60,7 @@ if __name__ == "__main__":
         model_name=args.model_name,
         checkpoint_path=args.checkpoint_path,
         rank_results_path=args.rank_results_path,
+        qrels_path=args.qrels_path,
         queries_path=args.queries_path,
         corpus_path=args.corpus_path,
         batch_size=args.batch_size,
