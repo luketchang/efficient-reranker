@@ -1,15 +1,7 @@
-# load pid -> passage for train
-# load passage[:100] -> pid for test
-# load qid -> pid -> score for train
-
-# iterate through train qid -> pid -> score, getting the pid -> passage for each pid
-# for each pid, check if it is in the test set,
-# if it is, replace train pid with test pid
-
 import json
 import argparse
 from collections import defaultdict
-from data_utils import load_pids_to_passages, load_qid_to_pid_to_score
+from data_utils import load_pids_to_passages, load_qid_to_pid_to_score,strip_prefixes
 
 def load_passage_to_pid(corpus_file, n_chars=200):
     passage_to_pid = {}
@@ -51,8 +43,8 @@ def main(train_qrels_path, train_corpus_path, test_corpus_path, n_chars):
 
     output_file = train_qrels_path.replace('.tsv', f'_mapped_{n_chars}.tsv')
     with open(output_file, 'w') as f:
-        for qid, pid_to_score in mapped_qid_to_pid_to_score.items():
-            for pid, score in pid_to_score.items():
+        for qid, pid_to_score in sorted(mapped_qid_to_pid_to_score.items(), key=lambda x: int(strip_prefixes(x[0]))):
+            for pid, score in (sorted(pid_to_score.items(), key=lambda x: x[1], reverse=True)):
                 f.write(f"{qid}\t{pid}\t{score}\n")
 
     print(f"No match count: {no_match_count}")

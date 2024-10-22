@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 from accelerate import Accelerator
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from datasets.query_passage_pair import QueryPassagePairDataset
+from data_utils import strip_prefixes
 
 def main(model_name, checkpoint_path, qrels_path, rank_results_path, queries_path, corpus_path, batch_size, output_path, qid_prefix, pid_prefix):
     accelerator = Accelerator(device_placement=True)
@@ -34,9 +35,9 @@ def main(model_name, checkpoint_path, qrels_path, rank_results_path, queries_pat
 
     # Sort the outer dictionary by pid and then the internal list by score
     with open(output_path, 'w') as f:
-        for qid in sorted(new_rank_results.keys()):  # Sort by qid
+        for qid in sorted(new_rank_results.keys(), key=lambda k: int(strip_prefixes(k))):  # Sort by qid
             # Sort internal list by pid first, and then by score
-            sorted_pid_and_scores = sorted(new_rank_results[qid], key=lambda x: (x['pid'], x['score']), reverse=True)
+            sorted_pid_and_scores = sorted(new_rank_results[qid], key=lambda x: (x['score']), reverse=True)
             for item in sorted_pid_and_scores:
                 f.write(f"{qid_prefix}{qid}\t{pid_prefix}{item['pid']}\t{item['score']}\n")
 

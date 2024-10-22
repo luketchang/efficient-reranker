@@ -1,7 +1,7 @@
 import random
 import argparse
 import json
-from data_utils import load_qid_to_pid_to_score, load_qids_to_queries
+from data_utils import load_qid_to_pid_to_score, load_qids_to_queries, strip_prefixes
 
 def main(qrels_path, queries_path, n):
     qrels = load_qid_to_pid_to_score(qrels_path)
@@ -18,8 +18,8 @@ def main(qrels_path, queries_path, n):
     queries_output_path = queries_path.replace(".jsonl", f"_sampled_{n}.jsonl")
     
     with open(qrels_output_path, 'w') as f:
-        for qid, pid_to_score in sampled_qrels.items():
-            for pid, score in pid_to_score.items():
+        for qid, pid_to_score in sorted(sampled_qrels.items(), key=lambda x: int(strip_prefixes(x[0]))):
+            for pid, score in sorted(pid_to_score.items(), key=lambda x: x[1], reverse=True):
                 f.write(f"{qid}\t{pid}\t{score}\n")
     
     with open(queries_output_path, 'w') as f:
