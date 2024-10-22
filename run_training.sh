@@ -22,8 +22,8 @@ accelerate launch train/train_script.py \
     --eval_rank_results_path data/nq/bge_en_icl_qrels_1000_ip_sampled_200.tsv \
     --eval_queries_path data/nq/queries_sampled_200.jsonl \
     --eval_every_n_batches 256
-    --lr 0.00005
-    --grad_clip_max_norm 0.75
+    --lr 0.00002
+    --grad_clip_max_norm 0.6
     --grad_accumulation_steps 4
 
 echo "Script finished at $(date)"

@@ -28,8 +28,7 @@ def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, n
     accelerator = Accelerator(deepspeed_plugin=deepspeed_plugin, mixed_precision=mixed_precision, device_placement=True)
     accelerator.print(f"State: {accelerator.state}")
     
-    # Lower learning rate for mixed precision stability
-    gradient_accumulation_steps = 1 # TODO: maybe add to CLI later
+    # Set seed
     set_seed(seed)
 
     # Instantiate the model
@@ -55,7 +54,7 @@ def training_loop(model_name, checkpoint_path, lr, weight_decay, dropout_prob, n
     eval_data_loader = DataLoader(eval_dataset, batch_size=batch_size, collate_fn=eval_dataset.collate_fn)
     
     # Instantiate optimizer
-    optimizer = AdamW(params=model.parameters(), lr=lr, weight_decay=weight_decay, eps=1e-3)
+    optimizer = AdamW(params=model.parameters(), lr=lr, weight_decay=weight_decay)
 
     # Prepare everything for distributed mixed precision
     model, optimizer, train_data_loader, eval_data_loader = accelerator.prepare(model, optimizer, train_data_loader, eval_data_loader)
@@ -138,7 +137,7 @@ def main():
     
     parser.add_argument("--model_name", type=str, required=True, help="Model name to load")
     parser.add_argument("--checkpoint_path", type=str, required=False, help="Path to the checkpoint to resume training from")
-    parser.add_argument("--lr", type=float, default=0.0003, required=False, help="Learning rate for the optimizer")
+    parser.add_argument("--lr", type=float, default=0.00002, required=False, help="Learning rate for the optimizer")
     parser.add_argument("--weight_decay", type=float, default=0.01, required=False, help="Weight decay for optimizer")
     parser.add_argument("--dropout_prob", type=float, default=0.1, required=False, help="Dropout probability")
     parser.add_argument("--num_epochs", type=int, default=3, required=False, help="Number of epochs for training")

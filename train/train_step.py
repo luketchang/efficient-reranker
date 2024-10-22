@@ -14,7 +14,7 @@ def train_step(model, batch, loss_fn, optimizer, accelerator, gradient_accumulat
     
     # Calculate loss
     loss = loss_fn(positive_logits, negative_logits, positive_labels, negative_labels) / gradient_accumulation_steps
-    avg_loss = loss.item() / len(positive_labels)
+    avg_loss = loss.item() * gradient_accumulation_steps / len(positive_labels)
     
     # Perform backpropagation with automatic mixed precision (handled by accelerator)
     accelerator.backward(loss)
