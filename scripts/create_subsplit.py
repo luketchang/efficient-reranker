@@ -23,7 +23,7 @@ def main(qrels_path, queries_path, n):
                 f.write(f"{qid}\t{pid}\t{score}\n")
     
     with open(queries_output_path, 'w') as f:
-        for qid, query in sampled_queries.items():
+        for qid, query in sorted(sampled_queries.items(), key=lambda x: int(strip_prefixes(x[0]))):
             json_record = {
                 "_id": qid,
                 "text": query,
