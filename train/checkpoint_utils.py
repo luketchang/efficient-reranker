@@ -55,21 +55,21 @@ def save_new_checkpoint_and_delete_old(accelerator, model, eval_metric, new_chec
 
 def save_checkpoint(accelerator, model, eval_metric, checkpoint_prefix):
     state_path = f'{checkpoint_prefix}-train'
-    bin_path = f'{checkpoint_prefix}-inference'
-    
+    bin_path = f'{checkpoint_prefix}-inference.pth'
+
+    # Save accelerator state
     accelerator.print("Saving accelerator state")
     accelerator.save_state(state_path)
     save_eval_metric(state_path, eval_metric)
     accelerator.print("Saved accelerator state")
 
-    accelerator.print("Saving model bin")
+    # Unwrap the model
     unwrapped_model = accelerator.unwrap_model(model)
-    unwrapped_model.save_pretrained(
-        bin_path,
-        is_main_process=accelerator.is_main_process,
-        save_function=accelerator.save,
-    )
-    accelerator.print("Saved model bin")
+
+    # Save the entire model (both Hugging Face part and custom layers)
+    accelerator.print("Saving the entire model")
+    accelerator.save(unwrapped_model.state_dict(), bin_path)
+    accelerator.print(f"Saved model to {bin_path}")
 
 def delete_old_checkpoint(checkpoint_prefix):
     state_path = f'{checkpoint_prefix}-train'
