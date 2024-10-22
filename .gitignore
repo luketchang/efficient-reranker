@@ -29,3 +29,4 @@ nq-train
 nq
 
 !*.md
+!*.sh
