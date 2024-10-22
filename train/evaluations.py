@@ -59,7 +59,11 @@ def evaluate_model_by_ndcg(model, eval_data_loader, accelerator):
             outputs = model(**pairs)
             output_logits = outputs.logits
 
-            preds_for_batch = output_logits.squeeze(1)
+            if output_logits.dim() > 1:
+                preds_for_batch = output_logits.squeeze(1)
+            else:
+                preds_for_batch = output_logits
+
             labels_for_batch = labels.long()
             indexes_for_batch = qids.long()
 
