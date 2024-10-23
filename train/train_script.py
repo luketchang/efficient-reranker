@@ -41,7 +41,7 @@ def training_loop(model_name, pooling, checkpoint_path, lr, weight_decay, dropou
     model.config.resid_pdrop = dropout_prob
     model.config.embd_pdrop = dropout_prob
     model.config.use_cache = False
-    model.deberta.gradient_checkpointing_enable() # TODO: fix hack
+    model.deberta.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False}) # TODO: fix hack
 
     # Load train data
     tokenizer = AutoTokenizer.from_pretrained(model_name, return_dict=True)
