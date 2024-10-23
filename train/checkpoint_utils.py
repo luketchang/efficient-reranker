@@ -73,13 +73,14 @@ def save_checkpoint(accelerator, model, eval_metric, checkpoint_prefix):
 
 def delete_old_checkpoint(checkpoint_prefix):
     state_path = f'{checkpoint_prefix}-train'
-    bin_path = f'{checkpoint_prefix}-inference'
+    bin_path = f'{checkpoint_prefix}-inference.pth'
     if os.path.exists(state_path):
         shutil.rmtree(state_path)
     else:
         print(f"Attempted to delete state. Directory {state_path} does not exist.")
 
-    if os.path.exists(bin_path):
-        shutil.rmtree(bin_path)
+    if os.path.isfile(bin_path):  # Ensure we're checking for a file, not a directory
+        os.remove(bin_path)
+        print(f"Deleted model file: {bin_path}")
     else:
-        print(f"Attempted to model bin. Directory {bin_path} does not exist.")
+        print(f"Attempted to delete model file. File {bin_path} does not exist.")
