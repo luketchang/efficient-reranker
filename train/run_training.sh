@@ -25,6 +25,7 @@ accelerate launch train/train_script.py \
     --lr 0.00002 \
     --grad_clip_max_norm 0.6 \
     --grad_accumulation_steps 4 \
-    --seed 43
+    --seed 43 \
+    --dropout_prob 0.2
 
 echo "Script finished at $(date)"
