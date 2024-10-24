@@ -11,6 +11,7 @@ def train_step(model, batch, loss_fn, optimizer, accelerator, gradient_accumulat
 
     positive_logits = positive_outs.logits
     negative_logits = negative_outs.logits
+    # negative_logits = negative_outs.logits.view(len(positive_logits), -1) # reshape to have n negatives per positive
     
     # Calculate loss
     loss = loss_fn(positive_logits, negative_logits, positive_labels, negative_labels) / gradient_accumulation_steps

@@ -7,7 +7,7 @@ from transformers import AutoTokenizer
 from models.deberta_v3_reranker import DeBERTaReranker
 import os
 import argparse
-from datasets.teacher_triples import TeacherTriplesDataset
+from datasets.pos_neg import PositiveNegativeDataset
 from datasets.query_passage_pair import QueryPassagePairDataset
 from checkpoint_utils import save_global_step, load_global_step, load_best_eval_metric, save_new_checkpoint_and_delete_old, checkpoint_path_to_prefix
 from train_step import train_step
@@ -45,7 +45,7 @@ def training_loop(model_name, pooling, checkpoint_path, lr, weight_decay, dropou
 
     # Load train data
     tokenizer = AutoTokenizer.from_pretrained(model_name, return_dict=True)
-    train_dataset = TeacherTriplesDataset(queries_path, corpus_path, positive_rank_results_path=train_positive_rank_results_path, negative_rank_results_path=train_negative_rank_results_path, tokenizer=tokenizer, max_seq_len=model.config.max_position_embeddings)
+    train_dataset = PositiveNegativeDataset(queries_path, corpus_path, positive_rank_results_path=train_positive_rank_results_path, negative_rank_results_path=train_negative_rank_results_path, tokenizer=tokenizer, max_seq_len=model.config.max_position_embeddings, seed=seed)
     train_data_loader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=train_dataset.collate_fn, shuffle=True)
     accelerator.print(f"train data loader len: {len(train_data_loader)}")
 
