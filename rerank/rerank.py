@@ -1,15 +1,19 @@
 import argparse
+import torch
 from collections import defaultdict
 from torch.utils.data import DataLoader
 from accelerate import Accelerator
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import AutoTokenizer
 from datasets.query_passage_pair import QueryPassagePairDataset
 from data_utils import strip_prefixes
+from models.deberta_v3_reranker import DeBERTaReranker
 
 def main(model_name, checkpoint_path, qrels_path, rank_results_path, queries_path, corpus_path, batch_size, output_path, qid_prefix, pid_prefix):
     accelerator = Accelerator(device_placement=True)
 
-    model = AutoModelForSequenceClassification.from_pretrained(checkpoint_path, num_labels=1)
+    model = DeBERTaReranker(model_name=model_name)
+    state_dict = torch.load(checkpoint_path, map_location=accelerator.device)
+    model.load_state_dict(state_dict)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     dataset = QueryPassagePairDataset(queries_path, corpus_path, rank_results_path, qrels_path, tokenizer=tokenizer, max_seq_len=model.config.max_position_embeddings)
