@@ -10,10 +10,9 @@ import argparse
 from datasets.pos_neg import PositiveNegativeDataset
 from datasets.query_passage_pair import QueryPassagePairDataset
 from checkpoint_utils import save_global_step, load_global_step, load_best_eval_metric, save_new_checkpoint_and_delete_old, checkpoint_path_to_prefix
-from train_step import train_step
+from train.train_step import train_step_margin_mse
 from evaluations import evaluate_model_by_ndcg
 from torch.optim import AdamW
-from loss import MSEMarginLoss
 
 def training_loop(model_name, pooling, checkpoint_path, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, queries_path, corpus_path, train_positive_rank_results_path, train_negative_rank_results_path, eval_rank_results_path, eval_qrels_path, eval_queries_path, eval_every_n_batches, model_bf16, mixed_precision, grad_accumulation_steps, grad_clip_max_norm, use_ds, ds_config_path):
     save_path = f'new-{model_name}'
@@ -71,9 +70,6 @@ def training_loop(model_name, pooling, checkpoint_path, lr, weight_decay, dropou
     # TensorBoard writer
     writer = SummaryWriter(log_dir=f'runs/{save_path}')
 
-    # Loss function
-    loss_function = MSEMarginLoss()
-
     # Load best eval loss and global step
     best_eval_metric = load_best_eval_metric(checkpoint_path, is_loss=False)
     global_step = load_global_step()
@@ -87,7 +83,7 @@ def training_loop(model_name, pooling, checkpoint_path, lr, weight_decay, dropou
         model.train()
         for step, batch in enumerate(train_data_loader, start=1):
             accelerator.print(f"Processing batch {step}/{len(train_data_loader)}")
-            avg_train_loss = train_step(model, batch, loss_function, optimizer, accelerator, grad_accumulation_steps, grad_clip_max_norm, global_step)
+            avg_train_loss = train_step_margin_mse(model, batch, optimizer, accelerator, grad_accumulation_steps, grad_clip_max_norm, global_step)
             if accelerator.is_main_process:
                 accelerator.print(f'Avg train loss: {avg_train_loss:.4g}')
                 writer.add_scalar('Loss/train', avg_train_loss, global_step)
