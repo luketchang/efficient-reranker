@@ -13,7 +13,7 @@ echo "Python path: $PYTHONPATH"
 accelerate launch train/train_script.py \
     --model_name microsoft/deberta-v3-large \
     --num_epochs 1 \
-    --batch_size_per_gpu 16 \
+    --batch_size_per_gpu 4 \
     --queries_path data/nq-train/matching_queries.jsonl \
     --corpus_path data/nq/corpus.jsonl \
     --train_positive_rank_results_path data/nq-train/nv_rerank_positives_sampled_10000.tsv \
