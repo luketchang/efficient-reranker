@@ -17,7 +17,7 @@ accelerate launch train/train_script.py \
     --queries_path data/nq-train/matching_queries.jsonl \
     --corpus_path data/nq/corpus.jsonl \
     --train_positive_rank_results_path data/nq-train/nv_rerank_positives_sampled_10000.tsv \
-    --train_negative_rank_results_path data/nq-train/nv_rerank_negatives_top200_sampled_10000_filtered.tsv \
+    --train_negative_rank_results_path data/nq-train/nv_rerank_negatives_top100_sampled_10000_filtered.tsv \
     --eval_qrels_path data/nq/qrels/test_sampled_200.tsv \
     --eval_rank_results_path data/nq/bge_en_icl_qrels_1000_ip_sampled_200.tsv \
     --eval_queries_path data/nq/queries_sampled_200.jsonl \
@@ -26,6 +26,6 @@ accelerate launch train/train_script.py \
     --grad_clip_max_norm 0.6 \
     --grad_accumulation_steps 4 \
     --seed 43 \
-    --dropout_prob 0.2
+    --dropout_prob 0.1
 
 echo "Script finished at $(date)"

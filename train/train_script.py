@@ -83,7 +83,7 @@ def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, wei
         model.train()
         for step, batch in enumerate(train_data_loader, start=1):
             accelerator.print(f"Processing batch {step}/{len(train_data_loader)}")
-            avg_train_loss = train_step_margin_mse(model, batch, optimizer, accelerator, grad_accumulation_steps, grad_clip_max_norm, global_step)
+            avg_train_loss = train_step_info_nce(model, batch, optimizer, accelerator, grad_accumulation_steps, grad_clip_max_norm, global_step)
             if accelerator.is_main_process:
                 accelerator.print(f'Avg train loss: {avg_train_loss:.4g}')
                 writer.add_scalar('Loss/train', avg_train_loss, global_step)
