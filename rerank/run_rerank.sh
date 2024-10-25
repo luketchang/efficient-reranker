@@ -19,6 +19,7 @@ PYTHONPATH=$PWD python rerank/rerank.py \
     --corpus_path data/nq/corpus.jsonl \
     --output_path deberta_info_nce_reranked_top_200.tsv \
     --qid_prefix test \
-    --pid_prefix doc
+    --pid_prefix doc \
+    --hits_per_query 200
 
 echo "Script finished at $(date)"
