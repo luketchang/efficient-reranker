@@ -10,11 +10,11 @@ import argparse
 from datasets.pos_neg import PositiveNegativeDataset
 from datasets.query_passage_pair import QueryPassagePairDataset
 from checkpoint_utils import save_global_step, load_global_step, load_best_eval_metric, save_new_checkpoint_and_delete_old, checkpoint_path_to_prefix
-from train.train_step import train_step_margin_mse
+from train.train_step import train_step_margin_mse, train_step_info_nce
 from evaluations import evaluate_model_by_ndcg
 from torch.optim import AdamW
 
-def training_loop(model_name, pooling, checkpoint_path, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, queries_path, corpus_path, train_positive_rank_results_path, train_negative_rank_results_path, eval_rank_results_path, eval_qrels_path, eval_queries_path, eval_every_n_batches, model_bf16, mixed_precision, grad_accumulation_steps, grad_clip_max_norm, use_ds, ds_config_path):
+def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, queries_path, corpus_path, train_positive_rank_results_path, train_negative_rank_results_path, eval_rank_results_path, eval_qrels_path, eval_queries_path, eval_every_n_batches, model_bf16, mixed_precision, grad_accumulation_steps, grad_clip_max_norm, use_ds, ds_config_path):
     save_path = f'new-{model_name}'
 
     deepspeed_plugin = DeepSpeedPlugin(
@@ -44,7 +44,7 @@ def training_loop(model_name, pooling, checkpoint_path, lr, weight_decay, dropou
 
     # Load train data
     tokenizer = AutoTokenizer.from_pretrained(model_name, return_dict=True)
-    train_dataset = PositiveNegativeDataset(queries_path, corpus_path, positive_rank_results_path=train_positive_rank_results_path, negative_rank_results_path=train_negative_rank_results_path, tokenizer=tokenizer, max_seq_len=model.config.max_position_embeddings, seed=seed)
+    train_dataset = PositiveNegativeDataset(queries_path, corpus_path, positive_rank_results_path=train_positive_rank_results_path, negative_rank_results_path=train_negative_rank_results_path, tokenizer=tokenizer, max_seq_len=model.config.max_position_embeddings, seed=seed, num_neg_per_pos=num_neg_per_pos)
     train_data_loader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=train_dataset.collate_fn, shuffle=True)
     accelerator.print(f"train data loader len: {len(train_data_loader)}")
 
@@ -134,6 +134,7 @@ def main():
     parser.add_argument("--model_name", type=str, required=True, help="Model name to load")
     parser.add_argument("--pooling", type=str, default="mean", required=False, help="Pooling strategy for the model")
     parser.add_argument("--checkpoint_path", type=str, required=False, help="Path to the checkpoint to resume training from")
+    parser.add_argument("--num_neg_per_pos", type=int, default=1, required=False, help="Number of negatives to sample per positive")
     parser.add_argument("--lr", type=float, default=0.00002, required=False, help="Learning rate for the optimizer")
     parser.add_argument("--weight_decay", type=float, default=0.01, required=False, help="Weight decay for optimizer")
     parser.add_argument("--dropout_prob", type=float, default=0.1, required=False, help="Dropout probability")
@@ -161,6 +162,7 @@ def main():
         model_name=args.model_name,
         pooling=args.pooling,
         checkpoint_path=args.checkpoint_path,
+        num_neg_per_pos=args.num_neg_per_pos,
         lr=args.lr,
         weight_decay=args.weight_decay,
         dropout_prob=args.dropout_prob,

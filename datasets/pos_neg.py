@@ -11,9 +11,10 @@ class PositiveNegativeDataset(Dataset):
         negative_rank_results = load_hits_from_qrels_queries_corpus(negative_rank_results_path, queries_path, corpus_path)
         self.max_seq_len = max_seq_len
         self.truncation = max_seq_len is not None
-        self.num_neg_per_pos = num_neg_per_pos  # Number of negatives to sample
-        self.seed = seed  # Global seed
-
+        self.num_neg_per_pos = num_neg_per_pos  # Number of negatives to sample per positive
+        self.seed = seed  # Global seed for reproducibility
+        
+        local_rng = random.Random(seed)
         self.negative_rank_results_with_positives = []
         for rank_result in negative_rank_results:
             hits = rank_result['hits']
@@ -21,6 +22,10 @@ class PositiveNegativeDataset(Dataset):
             if qid in self.positive_rank_results:
                 for positive_id in self.positive_rank_results[qid]:
                     positive_score = self.positive_rank_results[qid][positive_id]
+                    
+                    # Shuffle hits once for each query before creating the dataset
+                    local_rng.shuffle(hits)
+                    
                     self.negative_rank_results_with_positives.append({
                         "query_id": qid,
                         "query": rank_result['query'],
@@ -29,17 +34,18 @@ class PositiveNegativeDataset(Dataset):
                         "hits": hits  # All hits for negative sampling
                     })
 
-        # Create index mapping: [(query_idx, hit_idx)]
+        # Create index mapping: [(query_idx, neg_group_idx)]
         self.index_mapping = []
         for query_idx, rank_result in enumerate(self.negative_rank_results_with_positives):
-            num_hits = len(rank_result['hits'])
-            self.index_mapping.extend([query_idx for _ in range(num_hits // self.num_neg_per_pos)])
+            num_hits = len([hit for hit in rank_result['hits'] if hit['docid'] != rank_result['positive_id']])
+            num_groups = num_hits // self.num_neg_per_pos
+            self.index_mapping.extend([(query_idx, group_idx) for group_idx in range(num_groups)])
 
     def __len__(self):
         return len(self.index_mapping)
 
     def __getitem__(self, idx):
-        query_idx = self.index_mapping[idx]
+        query_idx, group_idx = self.index_mapping[idx]
         rank_result = self.negative_rank_results_with_positives[query_idx]
         query = rank_result['query']
 
@@ -47,12 +53,11 @@ class PositiveNegativeDataset(Dataset):
         positive_id = rank_result['positive_id']
         positive_passage = self.corpus[positive_id]
 
-        # Use local RNG for sampling negatives conditioned on seed + idx
-        local_rng = random.Random(self.seed + idx)
-
-        # Sample negatives deterministically but locally, using local_rng
+        # Determine negative samples for the current group
+        start_idx = group_idx * self.num_neg_per_pos
+        end_idx = start_idx + self.num_neg_per_pos
         negative_candidates = [hit for hit in rank_result['hits'] if hit['docid'] != positive_id]
-        hard_negatives = local_rng.sample(negative_candidates, self.num_neg_per_pos)
+        hard_negatives = negative_candidates[start_idx:end_idx]
 
         return {
             "query_id": rank_result['query_id'],
