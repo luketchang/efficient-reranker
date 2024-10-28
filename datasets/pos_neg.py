@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import Dataset
-from data_utils import load_qid_to_pid_to_score, load_pids_to_passages, load_hits_from_qrels_queries_corpus, strip_prefixes
+from data_utils import load_qid_to_pid_to_score, load_pids_to_passages, load_hits_from_qrels_queries_corpus
 import random
 
 class PositiveNegativeDataset(Dataset):
