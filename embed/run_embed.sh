@@ -10,7 +10,7 @@ echo "Starting script at $(date)"
 echo "Current working directory: $PWD"
 echo "Python path: $PYTHONPATH"
 
-PYTHONPATH=$PWD accelerate launch embed.py \
+PYTHONPATH=$PWD accelerate launch embed/embed.py \
     --model_name BAAI/bge-en-icl \
     --input_path data/hotpotqa/corpus.jsonl \
     --collection_name hotpot_corpus \
