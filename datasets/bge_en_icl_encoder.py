@@ -53,7 +53,7 @@ class BgeEnIclDataset(Dataset):
     
     def collate_fn(self, batch):
         # Extract the elements in the batch
-        ids = [int(strip_prefixes(sample['id'])) for sample in batch]
+        ids = [strip_prefixes(sample['id']) for sample in batch]
         texts = [sample['text'] for sample in batch]
 
         max_len = self.max_seq_len
@@ -70,7 +70,7 @@ class BgeEnIclDataset(Dataset):
         )
         
         return {
-            "ids": torch.tensor(ids, dtype=torch.long),  # Convert ids to tensor
+            "ids": ids,
             "input_ids": tokenized["input_ids"],
             "attention_mask": tokenized["attention_mask"],
         }
