@@ -77,8 +77,8 @@ def main():
     parser.add_argument('--input_path', type=str, required=True, help='Path to the input JSONL file')
     parser.add_argument('--collection_name', type=str, required=True, help='Milvus collection name')
     parser.add_argument('--batch_size', type=int, default=8, help='Batch size for embedding and insertion')
-    parser.add_argument('--milvus_host', type=str, default='127.0.0.1', help='Milvus host')
-    parser.add_argument('--milvus_port', type=str, default='19530', help='Milvus port')
+    parser.add_argument('--milvus_uri', type=str, default='127.0.0.1:19530', help='Milvus uri')
+    parser.add_argument('--milvus_token', type=str, default=None, help='Milvus token')
     parser.add_argument('--flush_interval', type=int, default=32, help='Number of batches to buffer before flushing to Milvus')
     parser.add_argument('--dim', type=int, required=True, help="Embedding dim")
     args = parser.parse_args()
@@ -89,9 +89,9 @@ def main():
         sys.exit(1)
 
     # Connect to Milvus
-    print(f"Connecting to Milvus at {args.milvus_host}:{args.milvus_port}")
-    connections.connect(host=args.milvus_host, port=args.milvus_port)
-    client = MilvusClient(f"http://{args.milvus_host}:{args.milvus_port}")
+    print(f"Connecting to Milvus at {args.milvus_uri}")
+    connections.connect(alias="default", uri=args.milvus_uri, token=args.milvus_token)
+    client = MilvusClient(uri=args.milvus_uri, token=args.milvus_token)
 
     # Load the dataset
     print(f"Loading dataset from '{args.input_path}'...")

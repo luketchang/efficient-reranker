@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import Dataset
-from enum import Enum
 from datasets.utils import load_data_from_jsonl, DatasetType
+from data_utils import strip_prefixes
 
 class BgeEnIclDataset(Dataset):
     def __init__(self, dataset_type: DatasetType, input_path, tokenizer, max_seq_len=4096, start_line=0, max_lines=None, prefix_examples=None, qrels_filter_path=None):
@@ -53,7 +53,7 @@ class BgeEnIclDataset(Dataset):
     
     def collate_fn(self, batch):
         # Extract the elements in the batch
-        ids = [sample['id'] for sample in batch]
+        ids = [int(strip_prefixes(sample['id'])) for sample in batch]
         texts = [sample['text'] for sample in batch]
 
         max_len = self.max_seq_len

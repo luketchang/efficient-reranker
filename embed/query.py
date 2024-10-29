@@ -28,8 +28,8 @@ def main():
     parser.add_argument("--output_path", type=str, default="qrels.tsv", help="Path to output the qrels.tsv file")
     parser.add_argument("--batch_size", type=int, default=10, help="Number of queries to process in a batch")
     parser.add_argument("--max_seq_len", type=int, default=4096, help="Maximum sequence length for the model")
-    parser.add_argument('--milvus_host', type=str, default='127.0.0.1', help='Milvus host')
-    parser.add_argument('--milvus_port', type=str, default='19530', help='Milvus port')
+    parser.add_argument('--milvus_uri', type=str, default='127.0.0.1:19530', help='Milvus uri')
+    parser.add_argument('--milvus_token', type=str, default=None, help='Milvus token')
     parser.add_argument("--qrels_qid_prefix", type=str, default="", help="Prefix for the qrels file")
     parser.add_argument("--qrels_pid_prefix", type=str, default="", help="Suffix for the qrels file")
 
@@ -53,9 +53,10 @@ def main():
     print("length of dataset:", len(dataset))
 
     # connect to Milvus
-    print(f"Connecting to Milvus at {args.milvus_host}:{args.milvus_port}")
-    connections.connect(host=args.milvus_host, port=args.milvus_port)
-    client = MilvusClient(f"http://{args.milvus_host}:{args.milvus_port}")
+    print(f"Connecting to Milvus at {args.milvus_uri}")
+    connections.connect(alias="default", uri=args.milvus_uri, token=args.milvus_token)
+    client = MilvusClient(uri=args.milvus_uri, token=args.milvus_token)
+    
     print("Loading collection...")
     client.load_collection(args.collection_name)
 

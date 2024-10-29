@@ -14,6 +14,8 @@ PYTHONPATH=$PWD accelerate launch embed/embed.py \
     --model_name BAAI/bge-en-icl \
     --input_path data/hotpotqa/corpus.jsonl \
     --collection_name hotpot_corpus \
-    --batch_size 8
+    --batch_size 8 \
+    --milvus_uri $MILVUS_URI \
+    --milvus_token $MILVUS_TOKEN \
 
 echo "Script finished at $(date)"

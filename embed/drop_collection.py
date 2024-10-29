@@ -14,12 +14,14 @@ def drop_collection(collection_name):
 def main():
     parser = argparse.ArgumentParser(description="Drop a collection from Milvus.")
     parser.add_argument("--collection_name", type=str, help="Name of the collection to drop.")
-    parser.add_argument('--milvus_host', type=str, default='127.0.0.1', help='Milvus host')
-    parser.add_argument('--milvus_port', type=str, default='19530', help='Milvus port')
+    parser.add_argument('--milvus_uri', type=str, default='127.0.0.1:19530', help='Milvus uri')
+    parser.add_argument('--milvus_token', type=str, default=None, help='Milvus token')
 
     args = parser.parse_args()
 
-    connections.connect(host=args.milvus_host, port=args.milvus_port)
+    print(f"Connecting to Milvus at {args.milvus_uri}")
+    connections.connect(alias="default", uri=args.milvus_uri, token=args.milvus_token)
+
     drop_collection(args.collection_name)
 
 if __name__ == "__main__":
