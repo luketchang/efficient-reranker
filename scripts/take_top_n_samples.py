@@ -1,8 +1,8 @@
 import argparse
-from data_utils import load_hits_from_qrels_queries_corpus
+from data_utils import load_hits_from_rank_results_queries_corpus
 
 def main(rank_results_path, queries_path, corpus_path, output_path, n):
-    rank_results = load_hits_from_qrels_queries_corpus(rank_results_path, queries_path, corpus_path)
+    rank_results = load_hits_from_rank_results_queries_corpus(rank_results_path, queries_path, corpus_path)
 
     # take top 30 hits for each query
     for rank_result in rank_results:

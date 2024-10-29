@@ -1,6 +1,6 @@
 import json
 
-def load_hits_from_qrels_queries_corpus(qrels_file, queries_file, corpus_file=None, n_hits_per_query=None):
+def load_hits_from_rank_results_queries_corpus(rank_results_file, queries_file, corpus_file=None, n_hits_per_query=None):
     print(f"Loading qids from '{queries_file}'")
     queries = load_qids_to_queries(queries_file)
 
@@ -9,7 +9,7 @@ def load_hits_from_qrels_queries_corpus(qrels_file, queries_file, corpus_file=No
 
     # Step 3: Load qrels and combine all data
     results = {}
-    with open(qrels_file, 'r') as f:
+    with open(rank_results_file, 'r') as f:
         for line in f:
             # Skip if the first line is the header
             if line.startswith("query-id"):
@@ -34,7 +34,7 @@ def load_hits_from_qrels_queries_corpus(qrels_file, queries_file, corpus_file=No
 
     # Step 4: Sort the queries by numeric qid and their hits by score
     rank_results = []
-    for qid in sorted(results.keys(), key=lambda x: int(x.replace("test", "").replace("train", "").replace("dev", ""))):  # Sort by numeric qid
+    for qid in sorted(results.keys(), key=lambda x: int(strip_prefixes(x))):  # Sort by numeric qid
         sorted_hits = sorted(
             results[qid]['hits'], 
             key=lambda x: -x['score']  # Sort hits by score in descending order
@@ -75,9 +75,9 @@ def load_pids_to_passages(corpus_file, append_title=True):
             corpus[pid] = passage
     return corpus
 
-def load_qid_to_pid_to_score(qrels_file):
+def load_qid_to_pid_to_score(rank_results_file):
     qid_to_pid_to_score = {}
-    with open(qrels_file, 'r') as f:
+    with open(rank_results_file, 'r') as f:
         for line in f:
             if line.startswith("query-id"):
                 continue

@@ -4,11 +4,11 @@
 # getitem(idx): array[idx]
 
 from torch.utils.data import Dataset
-from data_utils import load_hits_from_qrels_queries_corpus
+from data_utils import load_hits_from_rank_results_queries_corpus
 
 class RawTextPairDataset(Dataset):
     def __init__(self, qrels_path, queries_path, corpus_path):
-        hits = load_hits_from_qrels_queries_corpus(qrels_path, queries_path, corpus_path)
+        hits = load_hits_from_rank_results_queries_corpus(qrels_path, queries_path, corpus_path)
         self.hits = [hit for rank_result in hits for hit in rank_result['hits']]
 
     def __len__(self):

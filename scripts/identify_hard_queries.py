@@ -3,12 +3,12 @@
 # identify hits where positive is at hits index > 5
 # print list of query ids for the identified hits
 
-from data_utils import load_qid_to_pid_to_score, load_hits_from_qrels_queries_corpus
+from data_utils import load_qid_to_pid_to_score, load_hits_from_rank_results_queries_corpus
 import argparse
 from collections import defaultdict
 
 def main(rank_results_path, queries_path, corpus_path, positive_qrels, bad_rank_threshold=5):
-    rank_results = load_hits_from_qrels_queries_corpus(rank_results_path, queries_path, corpus_path)
+    rank_results = load_hits_from_rank_results_queries_corpus(rank_results_path, queries_path, corpus_path)
     positive_scores = load_qid_to_pid_to_score(positive_qrels)
     
     hard_queries = defaultdict(list)

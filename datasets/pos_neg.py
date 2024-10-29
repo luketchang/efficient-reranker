@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import Dataset
-from data_utils import load_qid_to_pid_to_score, load_pids_to_passages, load_hits_from_qrels_queries_corpus, strip_prefixes
+from data_utils import load_qid_to_pid_to_score, load_pids_to_passages, load_hits_from_rank_results_queries_corpus
 import random
 
 class PositiveNegativeDataset(Dataset):
@@ -8,7 +8,7 @@ class PositiveNegativeDataset(Dataset):
         self.tokenizer = tokenizer
         self.positive_rank_results = load_qid_to_pid_to_score(positive_rank_results_path)
         self.corpus = load_pids_to_passages(corpus_path)
-        negative_rank_results = load_hits_from_qrels_queries_corpus(negative_rank_results_path, queries_path, corpus_path)
+        negative_rank_results = load_hits_from_rank_results_queries_corpus(negative_rank_results_path, queries_path, corpus_path)
         self.max_seq_len = max_seq_len
         self.truncation = max_seq_len is not None
         self.num_neg_per_pos = num_neg_per_pos  # Number of negatives to sample per positive

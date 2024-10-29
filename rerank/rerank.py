@@ -5,7 +5,6 @@ from torch.utils.data import DataLoader
 from accelerate import Accelerator
 from transformers import AutoTokenizer
 from datasets.query_passage_pair import QueryPassagePairDataset
-from data_utils import strip_prefixes
 from models.deberta_v3_reranker import DeBERTaReranker
 
 def main(model_name, checkpoint_path, qrels_path, rank_results_path, queries_path, corpus_path, batch_size, output_path, qid_prefix, pid_prefix, hits_per_query):

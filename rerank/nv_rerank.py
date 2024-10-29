@@ -3,7 +3,7 @@ import requests
 import sys
 import os
 from time import sleep
-from data_utils import load_hits_from_qrels_queries_corpus
+from data_utils import load_hits_from_rank_results_queries_corpus
 from tqdm import tqdm
 
 
@@ -19,7 +19,7 @@ def main(api_url, qrels_file, queries_file, corpus_file, output_file, start=0, e
         "content-type": "application/json",
     }
 
-    rank_results = load_hits_from_qrels_queries_corpus(qrels_file, queries_file, corpus_file)
+    rank_results = load_hits_from_rank_results_queries_corpus(qrels_file, queries_file, corpus_file)
 
     end = min(end or len(rank_results), len(rank_results))
     start = max(0, min(start, end - 1))
