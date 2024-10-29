@@ -2,37 +2,50 @@ import torch
 from torch.utils.data import Dataset
 from data_utils import load_qid_to_pid_to_score, load_pids_to_passages, load_hits_from_rank_results_queries_corpus
 import random
+from collections import defaultdict
 
 class PositiveNegativeDataset(Dataset):
-    def __init__(self, queries_path, corpus_path, negative_rank_results_path, positive_rank_results_path, tokenizer, max_seq_len=None, num_neg_per_pos=8, seed=43):
+    def __init__(self, queries_paths, corpus_paths, negative_rank_results_paths, positive_rank_results_paths, tokenizer, max_seq_len=None, num_neg_per_pos=8, seed=43):
         self.tokenizer = tokenizer
-        self.positive_rank_results = load_qid_to_pid_to_score(positive_rank_results_path)
-        self.corpus = load_pids_to_passages(corpus_path)
-        negative_rank_results = load_hits_from_rank_results_queries_corpus(negative_rank_results_path, queries_path, corpus_path)
+        self.positive_rank_results = defaultdict(dict)
+        self.corpus = {}
         self.max_seq_len = max_seq_len
         self.truncation = max_seq_len is not None
         self.num_neg_per_pos = num_neg_per_pos  # Number of negatives to sample per positive
         self.seed = seed  # Global seed for reproducibility
-        
         local_rng = random.Random(seed)
+
+        # Load multiple positive rank results and corpora
+        for pos_path, corpus_path in zip(positive_rank_results_paths, corpus_paths):
+            positive_rank_results = load_qid_to_pid_to_score(pos_path)
+            corpus = load_pids_to_passages(corpus_path)
+            
+            # Merge each dataset's qrels and passages into the main dictionary
+            for qid, pid_scores in positive_rank_results.items():
+                self.positive_rank_results[qid].update(pid_scores)
+            self.corpus.update(corpus)
+
+        # Load and process multiple negative rank results
         self.negative_rank_results_with_positives = []
-        for rank_result in negative_rank_results:
-            hits = rank_result['hits']
-            qid = hits[0]['qid']
-            if qid in self.positive_rank_results:
-                for positive_id in self.positive_rank_results[qid]:
-                    positive_score = self.positive_rank_results[qid][positive_id]
-                    
-                    # Shuffle hits once for each query before creating the dataset
-                    local_rng.shuffle(hits)
-                    
-                    self.negative_rank_results_with_positives.append({
-                        "query_id": qid,
-                        "query": rank_result['query'],
-                        "positive_id": positive_id,
-                        "positive_score": positive_score,
-                        "hits": hits  # All hits for negative sampling
-                    })
+        for neg_path, query_path, corpus_path in zip(negative_rank_results_paths, queries_paths, corpus_paths):
+            negative_rank_results = load_hits_from_rank_results_queries_corpus(neg_path, query_path, corpus_path)
+            for rank_result in negative_rank_results:
+                hits = rank_result['hits']
+                qid = hits[0]['qid']
+                if qid in self.positive_rank_results:
+                    for positive_id in self.positive_rank_results[qid]:
+                        positive_score = self.positive_rank_results[qid][positive_id]
+                        
+                        # Shuffle hits once for each query before creating the dataset
+                        local_rng.shuffle(hits)
+                        
+                        self.negative_rank_results_with_positives.append({
+                            "query_id": qid,
+                            "query": rank_result['query'],
+                            "positive_id": positive_id,
+                            "positive_score": positive_score,
+                            "hits": hits  # All hits for negative sampling
+                        })
 
         # Create index mapping: [(query_idx, neg_group_idx)]
         self.index_mapping = []

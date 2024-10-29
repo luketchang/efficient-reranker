@@ -14,7 +14,7 @@ from train.train_step import train_step_margin_mse, train_step_info_nce
 from evaluations import evaluate_model_by_ndcg
 from torch.optim import AdamW
 
-def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, queries_path, corpus_path, train_positive_rank_results_path, train_negative_rank_results_path, eval_rank_results_path, eval_qrels_path, eval_queries_path, eval_every_n_batches, model_bf16, mixed_precision, grad_accumulation_steps, grad_clip_max_norm, use_ds, ds_config_path):
+def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, queries_paths, corpus_paths, train_positive_rank_results_paths, train_negative_rank_results_paths, eval_rank_results_paths, eval_qrels_paths, eval_queries_paths, eval_every_n_batches, model_bf16, mixed_precision, grad_accumulation_steps, grad_clip_max_norm, use_ds, ds_config_path):
     save_path = f'new-{model_name}'
 
     deepspeed_plugin = DeepSpeedPlugin(
@@ -44,12 +44,12 @@ def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, wei
 
     # Load train data
     tokenizer = AutoTokenizer.from_pretrained(model_name, return_dict=True)
-    train_dataset = PositiveNegativeDataset(queries_path, corpus_path, positive_rank_results_path=train_positive_rank_results_path, negative_rank_results_path=train_negative_rank_results_path, tokenizer=tokenizer, max_seq_len=model.config.max_position_embeddings, seed=seed, num_neg_per_pos=num_neg_per_pos)
+    train_dataset = PositiveNegativeDataset(queries_paths, corpus_paths, positive_rank_results_paths=train_positive_rank_results_paths, negative_rank_results_paths=train_negative_rank_results_paths, tokenizer=tokenizer, max_seq_len=model.config.max_position_embeddings, seed=seed, num_neg_per_pos=num_neg_per_pos)
     train_data_loader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=train_dataset.collate_fn, shuffle=True)
     accelerator.print(f"train data loader len: {len(train_data_loader)}")
 
     # Load eval data
-    eval_dataset = QueryPassagePairDataset(eval_queries_path, corpus_path, rank_results_path=eval_rank_results_path, qrels_path=eval_qrels_path, tokenizer=tokenizer, max_seq_len=model.config.max_position_embeddings)
+    eval_dataset = QueryPassagePairDataset(eval_queries_paths, corpus_paths, rank_results_paths=eval_rank_results_paths, qrels_paths=eval_qrels_paths, tokenizer=tokenizer, max_seq_len=model.config.max_position_embeddings)
     eval_data_loader = DataLoader(eval_dataset, batch_size=batch_size, collate_fn=eval_dataset.collate_fn)
     
     # Instantiate optimizer
@@ -141,13 +141,18 @@ def main():
     parser.add_argument("--num_epochs", type=int, default=3, required=False, help="Number of epochs for training")
     parser.add_argument("--batch_size_per_gpu", type=int, default=8, required=False, help="Batch size per GPU")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility (optional, default=42)")
-    parser.add_argument("--queries_path", type=str, required=True, help="Path to the queries JSONL file")
-    parser.add_argument("--corpus_path", type=str, required=True, help="Path to the corpus JSONL file")
-    parser.add_argument("--train_positive_rank_results_path", type=str, required=True, help="Path to the train positive rank results file")
-    parser.add_argument("--train_negative_rank_results_path", type=str, required=True, help="Path to the train negative rank results file")
-    parser.add_argument("--eval_qrels_path", type=str, required=True, help="Path to the eval negative rank results file")
-    parser.add_argument("--eval_queries_path", type=str, required=True, help="Path to the eval queries file")
-    parser.add_argument("--eval_rank_results_path", type=str, required=True, help="Path to the eval positive rank results file")
+
+    # NOTE: can take multiple items per arg
+    parser.add_argument("--queries_paths", type=str, nargs='+', required=True, help="Paths to the queries JSONL files")
+    parser.add_argument("--corpus_paths", type=str, nargs='+', required=True, help="Paths to the corpus JSONL files")
+    parser.add_argument("--train_positive_rank_results_paths", type=str, nargs='+', required=True, help="Paths to the train positive rank results files")
+    parser.add_argument("--train_negative_rank_results_paths", type=str, nargs='+', required=True, help="Paths to the train negative rank results files")
+
+    # NOTE: can take multiple items per arg
+    parser.add_argument("--eval_qrels_paths", type=str, nargs='+', required=True, help="Paths to the eval qrels files")
+    parser.add_argument("--eval_queries_paths", type=str, nargs='+', required=True, help="Paths to the eval queries files")
+    parser.add_argument("--eval_rank_results_paths", type=str, nargs='+', required=True, help="Paths to the eval rank results files")
+
     parser.add_argument("--eval_every_n_batches", type=int, default=5, help="Evaluate model every n batches (optional, default=32)")
     parser.add_argument("--model_bf16", type=str, default=None, help="Load model in bf16")
     parser.add_argument("--mixed_precision", type=str, default=None, help="Mixed precision (fp16, bf16)")
@@ -169,13 +174,13 @@ def main():
         num_epochs=args.num_epochs,
         batch_size=args.batch_size_per_gpu,
         seed=args.seed,
-        queries_path=args.queries_path,
-        corpus_path=args.corpus_path,
-        train_positive_rank_results_path=args.train_positive_rank_results_path,
-        train_negative_rank_results_path=args.train_negative_rank_results_path,
-        eval_rank_results_path=args.eval_rank_results_path,
-        eval_qrels_path=args.eval_qrels_path,
-        eval_queries_path=args.eval_queries_path,
+        queries_paths=args.queries_paths,
+        corpus_paths=args.corpus_paths,
+        train_positive_rank_results_paths=args.train_positive_rank_results_paths,
+        train_negative_rank_results_paths=args.train_negative_rank_results_paths,
+        eval_rank_results_paths=args.eval_rank_results_paths,
+        eval_qrels_paths=args.eval_qrels_paths,
+        eval_queries_paths=args.eval_queries_paths,
         eval_every_n_batches=args.eval_every_n_batches,
         model_bf16=args.model_bf16,
         mixed_precision=args.mixed_precision,
