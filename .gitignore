@@ -19,6 +19,7 @@ __pycache__
 *.zip
 *.db
 *.log
+model_bins
 
 .ipynb_checkpoints
 
