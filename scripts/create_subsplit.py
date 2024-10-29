@@ -3,7 +3,7 @@ import argparse
 import json
 from data_utils import load_qid_to_pid_to_score, load_qids_to_queries, strip_prefixes
 
-def main(qrels_path, queries_path, n):
+def main(qrels_path, queries_path, n, qid_base):
     qrels = load_qid_to_pid_to_score(qrels_path)
     queries = load_qids_to_queries(queries_path)
     
@@ -18,12 +18,12 @@ def main(qrels_path, queries_path, n):
     queries_output_path = queries_path.replace(".jsonl", f"_sampled_{n}.jsonl")
     
     with open(qrels_output_path, 'w') as f:
-        for qid, pid_to_score in sorted(sampled_qrels.items(), key=lambda x: int(strip_prefixes(x[0]))):
+        for qid, pid_to_score in sorted(sampled_qrels.items(), key=lambda x: int(strip_prefixes(x[0]), qid_base)):
             for pid, score in sorted(pid_to_score.items(), key=lambda x: x[1], reverse=True):
                 f.write(f"{qid}\t{pid}\t{score}\n")
     
     with open(queries_output_path, 'w') as f:
-        for qid, query in sorted(sampled_queries.items(), key=lambda x: int(strip_prefixes(x[0]))):
+        for qid, query in sorted(sampled_queries.items(), key=lambda x: int(strip_prefixes(x[0]), qid_base)):
             json_record = {
                 "_id": qid,
                 "text": query,
@@ -36,6 +36,7 @@ if __name__ == "__main__":
     parser.add_argument("--qrels_path", type=str, help="Path to the qrels file.")
     parser.add_argument("--queries_path", type=str, help="Path to the queries file.")
     parser.add_argument("--n", type=int, help="Number of samples to take.")
+    parser.add_argument("--qid_base", type=int, default=10, help="Base of the qid interpreted as int.")
     
     args = parser.parse_args()
-    main(args.qrels_path, args.queries_path, args.n)
+    main(args.qrels_path, args.queries_path, args.n, args.qid_base)
