@@ -1,8 +1,9 @@
 import json
 
-def load_hits_from_rank_results_queries_corpus(rank_results_file, queries_file, corpus_file=None, n_hits_per_query=None, qid_base=10):
+def load_hits_from_rank_results_queries_corpus(rank_results_file, queries_file, corpus_file=None, qrels_filter_path=None, n_hits_per_query=None, qid_base=10):
     print(f"Loading qids from '{queries_file}'")
     queries = load_qids_to_queries(queries_file)
+    qid_filter = load_qid_to_pid_to_score(qrels_filter_path) if qrels_filter_path is not None else None
 
     print(f"Loading corpus from '{corpus_file}'")
     corpus = load_pids_to_passages(corpus_file) if corpus_file is not None else None
@@ -17,6 +18,9 @@ def load_hits_from_rank_results_queries_corpus(rank_results_file, queries_file, 
 
             qid, docid, score = line.strip().split('\t')
             score = float(score)
+
+            if qid_filter and qid not in qid_filter:
+                continue
 
             # Initialize query entry if not already present
             if qid not in results:

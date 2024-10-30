@@ -12,7 +12,7 @@ class QueryPassagePairDataset(Dataset):
         # Loop through each dataset
         for queries_path, corpus_path, rank_results_path, qrels_path in zip(queries_paths, corpus_paths, rank_results_paths, qrels_paths):
             # Load rank results and ground truth for each dataset
-            rank_results = load_hits_from_rank_results_queries_corpus(rank_results_path, queries_path, corpus_path, qid_base=qid_base)
+            rank_results = load_hits_from_rank_results_queries_corpus(rank_results_path, queries_path, corpus_path, qrels_filter_path=qrels_path, qid_base=qid_base)
             ground_truth_pid_to_qid_to_score = load_qid_to_pid_to_score(qrels_path)
 
             # Process each rank result
