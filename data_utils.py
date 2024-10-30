@@ -1,6 +1,6 @@
 import json
 
-def load_hits_from_rank_results_queries_corpus(rank_results_file, queries_file, corpus_file=None, n_hits_per_query=None):
+def load_hits_from_rank_results_queries_corpus(rank_results_file, queries_file, corpus_file=None, n_hits_per_query=None, qid_base=10):
     print(f"Loading qids from '{queries_file}'")
     queries = load_qids_to_queries(queries_file)
 
@@ -34,7 +34,7 @@ def load_hits_from_rank_results_queries_corpus(rank_results_file, queries_file, 
 
     # Step 4: Sort the queries by numeric qid and their hits by score
     rank_results = []
-    for qid in sorted(results.keys(), key=lambda x: int(strip_prefixes(x))):  # Sort by numeric qid
+    for qid in sorted(results.keys(), key=lambda x: int(strip_prefixes(x), qid_base)):  # Sort by numeric qid
         sorted_hits = sorted(
             results[qid]['hits'], 
             key=lambda x: -x['score']  # Sort hits by score in descending order

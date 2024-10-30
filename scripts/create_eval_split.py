@@ -3,7 +3,7 @@ import json
 from data_utils import load_qid_to_pid_to_score, load_qids_to_queries, strip_prefixes
 import argparse
 
-def main(qrels_path, queries_path, initial_rank_results_path, n_queries, n_hits_per_query):
+def main(qrels_path, queries_path, initial_rank_results_path, n_queries, n_hits_per_query, qid_base=10):
     qrels = load_qid_to_pid_to_score(qrels_path)
     queries = load_qids_to_queries(queries_path)
     rank_results = load_qid_to_pid_to_score(initial_rank_results_path)
@@ -18,7 +18,7 @@ def main(qrels_path, queries_path, initial_rank_results_path, n_queries, n_hits_
     sampled_rank_results = {qid: rank_results[qid] for qid in sampled_qids if qid in rank_results}
 
     def to_int(qid):
-        return int(strip_prefixes(qid))
+        return int(strip_prefixes(qid), qid_base)
 
     sampled_queries = dict(sorted(sampled_queries.items(), key=lambda x:to_int(x[0])))
     sampled_qrels = dict(sorted(sampled_qrels.items(), key=lambda x: to_int(x[0])))
@@ -62,6 +62,7 @@ if __name__ == "__main__":
     parser.add_argument("--initial_rank_results_path", type=str, required=True, help="Path to the initial rank results file.")
     parser.add_argument("--n_queries", type=int, required=True, help="Number of queries to sample.")
     parser.add_argument("--n_hits_per_query", type=int, required=True, help="Number of hits per query.")
+    parser.add_argument("--qid_base", type=int, default=10, help="Base of the qid interpreted as int.")
 
     args = parser.parse_args()
 
@@ -70,5 +71,6 @@ if __name__ == "__main__":
         queries_path=args.queries_path,
         initial_rank_results_path=args.initial_rank_results_path,
         n_queries=args.n_queries,
-        n_hits_per_query=args.n_hits_per_query
+        n_hits_per_query=args.n_hits_per_query,
+        qid_base=args.qid_base
     )

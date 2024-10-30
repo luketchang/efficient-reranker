@@ -1,6 +1,7 @@
 import torch
 import torchmetrics
 import torchmetrics.retrieval
+import hashlib
 
 def evaluate_model_by_loss(model, eval_data_loader, loss_fn, accelerator):
     model.eval()
@@ -48,11 +49,14 @@ def evaluate_model_by_ndcg(model, eval_data_loader, accelerator):
     all_labels = []
     all_indexes = []
 
+    def hash_id(id_str):
+        return int(hashlib.sha256(id_str.encode()).hexdigest(), 16) % (2**32 - 1)
+
     with torch.no_grad():
         for i, batch in enumerate(eval_data_loader):
             accelerator.print(f"Processing batch {i}/{len(eval_data_loader)}")
 
-            qids = batch["qids"]
+            qids = torch.tensor([hash_id(qid) for qid in batch["qids"]])
             labels = batch["labels"]
             pairs = batch["pairs"]
             
@@ -65,11 +69,11 @@ def evaluate_model_by_ndcg(model, eval_data_loader, accelerator):
                 preds_for_batch = output_logits
 
             labels_for_batch = labels.long()
-            indexes_for_batch = qids.long()
+            indices_for_batch = qids.long()
 
             all_preds.append(preds_for_batch)
             all_labels.append(labels_for_batch)
-            all_indexes.append(indexes_for_batch)
+            all_indexes.append(indices_for_batch)
 
     # combine subarrays into single tensor
     all_preds = torch.cat(all_preds)

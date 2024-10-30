@@ -13,7 +13,7 @@ def load_passage_to_pid(corpus_file, n_chars=200):
             passage_to_pid[passage] = pid
     return passage_to_pid
 
-def main(train_qrels_path, train_corpus_path, test_corpus_path, n_chars):
+def main(train_qrels_path, train_corpus_path, test_corpus_path, n_chars, qid_base=10):
     test_passage_to_pid_n_chars = load_passage_to_pid(test_corpus_path, n_chars)
     train_pid_to_passage = load_pids_to_passages(train_corpus_path, append_title=False)
     train_qid_to_pid_to_score = load_qid_to_pid_to_score(train_qrels_path)
@@ -43,7 +43,7 @@ def main(train_qrels_path, train_corpus_path, test_corpus_path, n_chars):
 
     output_file = train_qrels_path.replace('.tsv', f'_mapped_{n_chars}.tsv')
     with open(output_file, 'w') as f:
-        for qid, pid_to_score in sorted(mapped_qid_to_pid_to_score.items(), key=lambda x: int(strip_prefixes(x[0]))):
+        for qid, pid_to_score in sorted(mapped_qid_to_pid_to_score.items(), key=lambda x: int(strip_prefixes(x[0]), qid_base)):
             for pid, score in (sorted(pid_to_score.items(), key=lambda x: x[1], reverse=True)):
                 f.write(f"{qid}\t{pid}\t{score}\n")
 
@@ -56,6 +56,7 @@ if __name__ == "__main__":
     parser.add_argument('--train_corpus_path', type=str, required=True, help='Path to the train corpus file')
     parser.add_argument('--test_corpus_path', type=str, required=True, help='Path to the test corpus file')
     parser.add_argument('--n_chars', type=int, default=512, help='Number of characters to consider for passage')
+    parser.add_argument('--qid_base', type=int, default=10, help='Base of qid (e.g. 10, 16)')
     
     args = parser.parse_args()
-    main(args.train_qrels_path, args.train_corpus_path, args.test_corpus_path, args.n_chars)
+    main(args.train_qrels_path, args.train_corpus_path, args.test_corpus_path, args.n_chars, qid_base=args.qid_base)

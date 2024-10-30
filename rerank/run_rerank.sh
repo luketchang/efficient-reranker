@@ -17,9 +17,8 @@ PYTHONPATH=$PWD python rerank/rerank.py \
     --qrels_path data/nq/qrels/test.tsv \
     --queries_path data/nq/queries.jsonl \
     --corpus_path data/nq/corpus.jsonl \
-    --output_path deberta_info_nce_reranked_top_200.tsv \
-    --qid_prefix test \
-    --pid_prefix doc \
-    --hits_per_query 200
+    --output_path paraphrase_info_nce_reranked_top_100.tsv \
+    --hits_per_query 100 \
+    --flush_interval 8
 
 echo "Script finished at $(date)"

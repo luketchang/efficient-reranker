@@ -1,7 +1,6 @@
 import torch
 from torch.utils.data import Dataset
 from data_utils import load_hits_from_rank_results_queries_corpus, load_qid_to_pid_to_score
-import hashlib
 
 class QueryPassagePairDataset(Dataset):
     def __init__(self, queries_paths, corpus_paths, rank_results_paths, qrels_paths, tokenizer, max_seq_len=None, hits_per_query=100):
@@ -44,12 +43,8 @@ class QueryPassagePairDataset(Dataset):
         return self.pairs[idx]
     
     def collate_fn(self, batch):
-        # NOTE: for evaluation, we need qids and pids even in collate_fn so we hash the strings which should contain unique tags for each dataset (e.g. nq, hotpotqa)
-        def hash_id(id_str):
-            return int(hashlib.md5(id_str.encode()).hexdigest(), 16) % (2**63 - 1)
-
-        hashed_qids = [hash_id(item['qid']) for item in batch]
-        hashed_pids = [hash_id(item['pid']) for item in batch]
+        qids = [item['qid'] for item in batch]
+        pids = [item['pid'] for item in batch]
         labels = [item['is_positive'] for item in batch]
         queries = [item['query'] for item in batch]
         passages = [item['passage'] for item in batch]
@@ -57,8 +52,8 @@ class QueryPassagePairDataset(Dataset):
         tokenized_pairs = self.tokenizer(queries, passages, padding=True, truncation=self.truncation, return_tensors="pt", max_length=self.max_seq_len)
 
         return {
-            "qids": torch.tensor(hashed_qids, dtype=torch.int64),
-            "pids": torch.tensor(hashed_pids, dtype=torch.int64),
-            "labels": torch.tensor(labels, dtype=torch.int64),
+            "qids": qids,
+            "pids": pids,
+            "labels": torch.tensor(labels),
             "pairs": tokenized_pairs,
         }
