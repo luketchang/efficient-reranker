@@ -3,7 +3,7 @@ from torch.utils.data import Dataset
 from data_utils import load_hits_from_rank_results_queries_corpus, load_qid_to_pid_to_score
 
 class QueryPassagePairDataset(Dataset):
-    def __init__(self, queries_paths, corpus_paths, rank_results_paths, qrels_paths, tokenizer, max_seq_len=None, hits_per_query=100):
+    def __init__(self, queries_paths, corpus_paths, rank_results_paths, qrels_paths, tokenizer, max_seq_len=None, hits_per_query=100, qid_base=10):
         self.tokenizer = tokenizer
         self.max_seq_len = max_seq_len
         self.truncation = max_seq_len is not None
@@ -12,7 +12,7 @@ class QueryPassagePairDataset(Dataset):
         # Loop through each dataset
         for queries_path, corpus_path, rank_results_path, qrels_path in zip(queries_paths, corpus_paths, rank_results_paths, qrels_paths):
             # Load rank results and ground truth for each dataset
-            rank_results = load_hits_from_rank_results_queries_corpus(rank_results_path, queries_path, corpus_path)
+            rank_results = load_hits_from_rank_results_queries_corpus(rank_results_path, queries_path, corpus_path, qid_base=qid_base)
             ground_truth_pid_to_qid_to_score = load_qid_to_pid_to_score(qrels_path)
 
             # Process each rank result
