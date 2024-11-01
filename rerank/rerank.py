@@ -17,7 +17,7 @@ def main(model_name, checkpoint_path, qrels_path, rank_results_path, queries_pat
         model.load_state_dict(state_dict)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    dataset = QueryPassagePairDataset([queries_path], [corpus_path], [rank_results_path], [qrels_path], tokenizer=tokenizer, max_seq_len=model.config.max_position_embeddings, hits_per_query=hits_per_query, qid_base=qid_base)
+    dataset = QueryPassagePairDataset([queries_path], [corpus_path], [rank_results_path], [qrels_path], qid_bases=[qid_base], tokenizer=tokenizer, max_seq_len=model.config.max_position_embeddings, hits_per_query=hits_per_query)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, collate_fn=dataset.collate_fn)
 
     model, dataloader = accelerator.prepare(model, dataloader)

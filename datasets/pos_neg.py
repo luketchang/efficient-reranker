@@ -5,7 +5,7 @@ import random
 from collections import defaultdict
 
 class PositiveNegativeDataset(Dataset):
-    def __init__(self, queries_paths, corpus_paths, negative_rank_results_paths, positive_rank_results_paths, tokenizer, max_seq_len=None, num_neg_per_pos=8, seed=43):
+    def __init__(self, queries_paths, corpus_paths, negative_rank_results_paths, positive_rank_results_paths, tokenizer, qid_bases, max_seq_len=None, num_neg_per_pos=8, seed=43):
         self.tokenizer = tokenizer
         self.positive_rank_results = defaultdict(dict)
         self.corpus = {}
@@ -27,8 +27,8 @@ class PositiveNegativeDataset(Dataset):
 
         # Load and process multiple negative rank results
         self.negative_rank_results_with_positives = []
-        for neg_path, query_path, corpus_path in zip(negative_rank_results_paths, queries_paths, corpus_paths):
-            negative_rank_results = load_hits_from_rank_results_queries_corpus(neg_path, query_path, corpus_path)
+        for neg_path, query_path, corpus_path, qid_base in zip(negative_rank_results_paths, queries_paths, corpus_paths, qid_bases):
+            negative_rank_results = load_hits_from_rank_results_queries_corpus(neg_path, query_path, corpus_path, qid_base=qid_base)
             for rank_result in negative_rank_results:
                 hits = rank_result['hits']
                 qid = hits[0]['qid']

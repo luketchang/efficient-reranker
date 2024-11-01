@@ -14,7 +14,7 @@ from train.train_step import train_step_margin_mse, train_step_info_nce
 from evaluations import evaluate_model_by_ndcg
 from torch.optim import AdamW
 
-def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, queries_paths, corpus_paths, train_positive_rank_results_paths, train_negative_rank_results_paths, eval_rank_results_paths, eval_qrels_paths, eval_queries_paths, eval_every_n_batches, model_bf16, mixed_precision, grad_accumulation_steps, grad_clip_max_norm, use_ds, ds_config_path):
+def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, queries_paths, corpus_paths, train_positive_rank_results_paths, train_negative_rank_results_paths, train_qid_bases, eval_rank_results_paths, eval_qrels_paths, eval_queries_paths, eval_qid_bases, eval_every_n_batches, model_bf16, mixed_precision, grad_accumulation_steps, grad_clip_max_norm, use_ds, ds_config_path):
     save_path = f'new-{model_name}'
 
     deepspeed_plugin = DeepSpeedPlugin(
@@ -44,12 +44,12 @@ def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, wei
 
     # Load train data
     tokenizer = AutoTokenizer.from_pretrained(model_name, return_dict=True)
-    train_dataset = PositiveNegativeDataset(queries_paths, corpus_paths, positive_rank_results_paths=train_positive_rank_results_paths, negative_rank_results_paths=train_negative_rank_results_paths, tokenizer=tokenizer, max_seq_len=model.config.max_position_embeddings, seed=seed, num_neg_per_pos=num_neg_per_pos)
+    train_dataset = PositiveNegativeDataset(queries_paths, corpus_paths, positive_rank_results_paths=train_positive_rank_results_paths, negative_rank_results_paths=train_negative_rank_results_paths, tokenizer=tokenizer, qid_bases=train_qid_bases, max_seq_len=model.config.max_position_embeddings, seed=seed, num_neg_per_pos=num_neg_per_pos)
     train_data_loader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=train_dataset.collate_fn, shuffle=True)
     accelerator.print(f"train data loader len: {len(train_data_loader)}")
 
     # Load eval data
-    eval_dataset = QueryPassagePairDataset(eval_queries_paths, corpus_paths, rank_results_paths=eval_rank_results_paths, qrels_paths=eval_qrels_paths, tokenizer=tokenizer, max_seq_len=model.config.max_position_embeddings)
+    eval_dataset = QueryPassagePairDataset(eval_queries_paths, corpus_paths, rank_results_paths=eval_rank_results_paths, qrels_paths=eval_qrels_paths, tokenizer=tokenizer, qid_bases=eval_qid_bases, max_seq_len=model.config.max_position_embeddings)
     eval_data_loader = DataLoader(eval_dataset, batch_size=batch_size, collate_fn=eval_dataset.collate_fn)
     
     # Instantiate optimizer
@@ -83,7 +83,7 @@ def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, wei
         model.train()
         for step, batch in enumerate(train_data_loader, start=1):
             accelerator.print(f"Processing batch {step}/{len(train_data_loader)}")
-            avg_train_loss = train_step_info_nce(model, batch, optimizer, accelerator, grad_accumulation_steps, grad_clip_max_norm, global_step)
+            avg_train_loss = train_step_margin_mse(model, batch, optimizer, accelerator, grad_accumulation_steps, grad_clip_max_norm, global_step)
             if accelerator.is_main_process:
                 accelerator.print(f'Avg train loss: {avg_train_loss:.4g}')
                 writer.add_scalar('Loss/train', avg_train_loss, global_step)
@@ -147,11 +147,13 @@ def main():
     parser.add_argument("--corpus_paths", type=str, nargs='+', required=True, help="Paths to the corpus JSONL files")
     parser.add_argument("--train_positive_rank_results_paths", type=str, nargs='+', required=True, help="Paths to the train positive rank results files")
     parser.add_argument("--train_negative_rank_results_paths", type=str, nargs='+', required=True, help="Paths to the train negative rank results files")
+    parser.add_argument("--train_qid_bases", type=int, nargs='+', required=True, help="Base of the qid interpreted as int")
 
     # NOTE: can take multiple items per arg
     parser.add_argument("--eval_qrels_paths", type=str, nargs='+', required=True, help="Paths to the eval qrels files")
     parser.add_argument("--eval_queries_paths", type=str, nargs='+', required=True, help="Paths to the eval queries files")
     parser.add_argument("--eval_rank_results_paths", type=str, nargs='+', required=True, help="Paths to the eval rank results files")
+    parser.add_argument("--eval_qid_bases", type=int, nargs='+', required=True, help="Base of the qid interpreted as int")
 
     parser.add_argument("--eval_every_n_batches", type=int, default=5, help="Evaluate model every n batches (optional, default=32)")
     parser.add_argument("--model_bf16", type=str, default=None, help="Load model in bf16")
@@ -178,9 +180,11 @@ def main():
         corpus_paths=args.corpus_paths,
         train_positive_rank_results_paths=args.train_positive_rank_results_paths,
         train_negative_rank_results_paths=args.train_negative_rank_results_paths,
+        train_qid_bases=args.train_qid_bases,
         eval_rank_results_paths=args.eval_rank_results_paths,
         eval_qrels_paths=args.eval_qrels_paths,
         eval_queries_paths=args.eval_queries_paths,
+        eval_qid_bases=args.eval_qid_bases,
         eval_every_n_batches=args.eval_every_n_batches,
         model_bf16=args.model_bf16,
         mixed_precision=args.mixed_precision,
