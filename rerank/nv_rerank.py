@@ -7,7 +7,7 @@ from data_utils import load_hits_from_rank_results_queries_corpus
 from tqdm import tqdm
 
 
-def main(api_url, qrels_file, queries_file, corpus_file, output_file, start=0, end=None, start_entry=0, window_size=512, k=100, sleep_time=4):
+def main(api_url, rank_results_file, queries_file, corpus_file, output_file, start=0, end=None, start_entry=0, window_size=512, k=100, sleep_time=4, qid_base=10):
     api_key = os.environ.get('NGC_API_KEY')
     if not api_key:
         print("Error: NGC_API_KEY environment variable is not set.")
@@ -19,7 +19,7 @@ def main(api_url, qrels_file, queries_file, corpus_file, output_file, start=0, e
         "content-type": "application/json",
     }
 
-    rank_results = load_hits_from_rank_results_queries_corpus(qrels_file, queries_file, corpus_file)
+    rank_results = load_hits_from_rank_results_queries_corpus(rank_results_file, queries_file, corpus_file, qid_base=qid_base)
 
     end = min(end or len(rank_results), len(rank_results))
     start = max(0, min(start, end - 1))
@@ -104,7 +104,7 @@ def main(api_url, qrels_file, queries_file, corpus_file, output_file, start=0, e
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Rerank hits using NVIDIA's API")
     parser.add_argument("--api_url", type=str, default="https://ai.api.nvidia.com/v1/retrieval/nvidia/nv-rerankqa-mistral-4b-v3/reranking", help="URL of the reranking API")
-    parser.add_argument("--qrels_path", type=str, required=True, help="Path to the qrels file")
+    parser.add_argument("--rank_results_path", type=str, required=True, help="Path to the qrels file")
     parser.add_argument("--queries_path", type=str, required=True, help="Path to the queries file")
     parser.add_argument("--corpus_path", type=str, required=True, help="Path to the corpus file")
     parser.add_argument("--output_path", type=str, default="reranked_results.tsv", help="Path to output the reranked results")
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     parser.add_argument("--window_size", type=int, default=512, help="Number of hits to process in a single batch")
     parser.add_argument("--k", type=int, default=100, help="Number of hits to keep for each query")
     parser.add_argument("--sleep_time", type=float, default=4, help="Time to sleep between API requests")
+    parser.add_argument("--qid_base", type=int, default=10, help="Base of the qid interpreted as int.")
     args = parser.parse_args()
 
-    main(args.api_url, args.qrels_path, args.queries_path, args.corpus_path, args.output_path,
-         start=args.start, end=args.end, start_entry=args.start_entry, window_size=args.window_size, k=args.k, sleep_time=args.sleep_time)
+    main(args.api_url, args.rank_results_path, args.queries_path, args.corpus_path, args.output_path, start=args.start, end=args.end, start_entry=args.start_entry, window_size=args.window_size, k=args.k, sleep_time=args.sleep_time, qid_base=args.qid_base)
