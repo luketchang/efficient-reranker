@@ -51,7 +51,7 @@ def training_loop(model_name, pooling, loss, checkpoint_path, num_neg_per_pos, l
     accelerator.print(f"train data loader len: {len(train_data_loader)}")
 
     # Load eval data
-    eval_datasets = [QueryPassagePairDataset([query_path], [corpus_path], rank_results_paths=[rank_results_path], qrels_paths=[qrels_path], tokenizer=tokenizer, qid_bases=eval_qid_bases, max_seq_len=model.config.max_position_embeddings) for query_path, corpus_path, rank_results_path, qrels_path in zip(eval_queries_paths, corpus_paths, eval_rank_results_paths, eval_qrels_paths)]
+    eval_datasets = [QueryPassagePairDataset([query_path], [corpus_path], rank_results_paths=[rank_results_path], qrels_paths=[qrels_path], tokenizer=tokenizer, qid_bases=[qid_base], max_seq_len=model.config.max_position_embeddings) for query_path, corpus_path, rank_results_path, qrels_path, qid_base in zip(eval_queries_paths, corpus_paths, eval_rank_results_paths, eval_qrels_paths, eval_qid_bases)]
     eval_data_loaders = [DataLoader(eval_dataset, batch_size=batch_size, collate_fn=eval_dataset.collate_fn) for eval_dataset in eval_datasets]
     
     # Instantiate optimizer
@@ -111,7 +111,7 @@ def training_loop(model_name, pooling, loss, checkpoint_path, num_neg_per_pos, l
 
                     # NOTE: only delete old checkpoint if new one is within delete_old_checkpoint_steps
                     if global_step - last_saved_global_step < delete_old_checkpoint_steps:
-                        delete_old_checkpoint(accelerator, checkpoint_prefix)
+                        delete_old_checkpoint(checkpoint_prefix)
 
                     checkpoint_prefix = new_checkpoint_prefix
                     best_eval_metric = avg_eval_ndcg
@@ -140,7 +140,7 @@ def training_loop(model_name, pooling, loss, checkpoint_path, num_neg_per_pos, l
 
             # NOTE: only delete old checkpoint if new one is within delete_old_checkpoint_steps
             if global_step - last_saved_global_step < delete_old_checkpoint_steps:
-                delete_old_checkpoint(accelerator, checkpoint_prefix)
+                delete_old_checkpoint(checkpoint_prefix)
 
             checkpoint_prefix = new_checkpoint_prefix
             best_eval_metric = avg_eval_ndcg
