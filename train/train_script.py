@@ -9,12 +9,12 @@ import os
 import argparse
 from datasets.pos_neg import PositiveNegativeDataset
 from datasets.query_passage_pair import QueryPassagePairDataset
-from checkpoint_utils import save_global_step, load_global_step, load_best_eval_metric, save_new_checkpoint_and_delete_old, checkpoint_path_to_prefix
+from checkpoint_utils import save_global_step, load_global_step, load_best_eval_metric, save_checkpoint, delete_old_checkpoint, checkpoint_path_to_prefix
 from train.train_step import train_step_margin_mse, train_step_info_nce
 from evaluations import evaluate_model_by_ndcg
 from torch.optim import AdamW
 
-def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, queries_paths, corpus_paths, train_positive_rank_results_paths, train_negative_rank_results_paths, train_qid_bases, eval_rank_results_paths, eval_qrels_paths, eval_queries_paths, eval_qid_bases, eval_every_n_batches, model_bf16, mixed_precision, grad_accumulation_steps, grad_clip_max_norm, use_ds, ds_config_path):
+def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, delete_old_checkpoint_steps, queries_paths, corpus_paths, train_positive_rank_results_paths, train_negative_rank_results_paths, train_qid_bases, eval_rank_results_paths, eval_qrels_paths, eval_queries_paths, eval_qid_bases, eval_every_n_batches, model_bf16, mixed_precision, grad_accumulation_steps, grad_clip_max_norm, use_ds, ds_config_path):
     save_path = f'new-{model_name}'
 
     deepspeed_plugin = DeepSpeedPlugin(
@@ -73,6 +73,7 @@ def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, wei
     # Load best eval loss and global step
     best_eval_metric = load_best_eval_metric(checkpoint_path, is_loss=False)
     global_step = load_global_step()
+    last_saved_global_step = global_step
     accelerator.print(f"Best evaluation metric so far: {best_eval_metric}")
     accelerator.print(f"Starting at global step: {global_step}")
 
@@ -99,10 +100,15 @@ def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, wei
 
                 if eval_ndcg > best_eval_metric:
                     new_checkpoint_prefix = f'{save_path}-step-{global_step}'
-                    save_new_checkpoint_and_delete_old(accelerator, model, eval_ndcg, new_checkpoint_prefix, checkpoint_prefix)
+                    save_checkpoint(accelerator, model, eval_ndcg, new_checkpoint_prefix)
+
+                    # NOTE: only delete old checkpoint if new one is within delete_old_checkpoint_steps
+                    if global_step - last_saved_global_step < delete_old_checkpoint_steps:
+                        delete_old_checkpoint(accelerator, checkpoint_prefix)
 
                     checkpoint_prefix = new_checkpoint_prefix
                     best_eval_metric = eval_ndcg
+                    last_saved_global_step = global_step
 
             global_step += 1
         
@@ -117,10 +123,15 @@ def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, wei
 
         if eval_ndcg > best_eval_metric:
             new_checkpoint_prefix = f'{save_path}-step-{global_step}'
-            save_new_checkpoint_and_delete_old(accelerator, model, eval_ndcg, new_checkpoint_prefix, checkpoint_prefix)
+            save_checkpoint(accelerator, model, eval_ndcg, new_checkpoint_prefix)
+
+            # NOTE: only delete old checkpoint if new one is within delete_old_checkpoint_steps
+            if global_step - last_saved_global_step < delete_old_checkpoint_steps:
+                delete_old_checkpoint(accelerator, checkpoint_prefix)
 
             checkpoint_prefix = new_checkpoint_prefix
             best_eval_metric = eval_ndcg
+            last_saved_global_step = global_step
         
         accelerator.wait_for_everyone()
         
@@ -141,6 +152,7 @@ def main():
     parser.add_argument("--num_epochs", type=int, default=3, required=False, help="Number of epochs for training")
     parser.add_argument("--batch_size_per_gpu", type=int, default=8, required=False, help="Batch size per GPU")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility (optional, default=42)")
+    parser.add_argument("--delete_old_checkpoint_steps", type=int, default=8192, help="Delete old checkpoint if new one is within this number of steps (optional, default=8192)")
 
     # NOTE: can take multiple items per arg
     parser.add_argument("--queries_paths", type=str, nargs='+', required=True, help="Paths to the queries JSONL files")
@@ -176,6 +188,7 @@ def main():
         num_epochs=args.num_epochs,
         batch_size=args.batch_size_per_gpu,
         seed=args.seed,
+        delete_old_checkpoint_steps=args.delete_old_checkpoint_steps,
         queries_paths=args.queries_paths,
         corpus_paths=args.corpus_paths,
         train_positive_rank_results_paths=args.train_positive_rank_results_paths,
