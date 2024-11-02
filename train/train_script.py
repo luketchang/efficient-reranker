@@ -14,8 +14,8 @@ from train.train_step import train_step_margin_mse, train_step_info_nce
 from evaluations import evaluate_model_by_ndcgs
 from torch.optim import AdamW
 
-def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, delete_old_checkpoint_steps, queries_paths, corpus_paths, train_positive_rank_results_paths, train_negative_rank_results_paths, train_qid_bases, eval_rank_results_paths, eval_qrels_paths, eval_queries_paths, eval_qid_bases, eval_every_n_batches, model_bf16, mixed_precision, grad_accumulation_steps, grad_clip_max_norm, use_ds, ds_config_path):
-    save_path = f'new-{model_name}'
+def training_loop(model_name, pooling, loss, checkpoint_path, num_neg_per_pos, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, delete_old_checkpoint_steps, queries_paths, corpus_paths, train_positive_rank_results_paths, train_negative_rank_results_paths, train_qid_bases, eval_rank_results_paths, eval_qrels_paths, eval_queries_paths, eval_qid_bases, eval_every_n_batches, model_bf16, mixed_precision, grad_accumulation_steps, grad_clip_max_norm, use_ds, ds_config_path):
+    save_path = f'new-{model_name}-{loss}'
 
     deepspeed_plugin = DeepSpeedPlugin(
         zero_stage=2,           # Use ZeRO stage 2 (stage 3 offloads even more, but is slower)
@@ -42,6 +42,8 @@ def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, wei
     model.config.use_cache = False
     model.deberta.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False}) # TODO: fix hack
 
+    train_step_fn = train_step_margin_mse if loss == "margin_mse" else train_step_info_nce
+
     # Load train data
     tokenizer = AutoTokenizer.from_pretrained(model_name, return_dict=True)
     train_dataset = PositiveNegativeDataset(queries_paths, corpus_paths, positive_rank_results_paths=train_positive_rank_results_paths, negative_rank_results_paths=train_negative_rank_results_paths, tokenizer=tokenizer, qid_bases=train_qid_bases, max_seq_len=model.config.max_position_embeddings, seed=seed, num_neg_per_pos=num_neg_per_pos)
@@ -56,7 +58,7 @@ def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, wei
     optimizer = AdamW(params=model.parameters(), lr=lr, weight_decay=weight_decay)
 
     # Prepare everything for distributed mixed precision
-    model, optimizer, train_data_loader, eval_data_loaders = accelerator.prepare(model, optimizer, train_data_loader, eval_data_loaders)
+    model, optimizer, train_data_loader, *eval_data_loaders = accelerator.prepare(model, optimizer, train_data_loader, *eval_data_loaders)
     accelerator.print("accelerator prepared")
     accelerator.print(f"train data loader len (accelerator): {len(train_data_loader)}")
 
@@ -84,7 +86,7 @@ def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, wei
         model.train()
         for step, batch in enumerate(train_data_loader, start=1):
             accelerator.print(f"Processing batch {step}/{len(train_data_loader)}")
-            avg_train_loss = train_step_margin_mse(model, batch, optimizer, accelerator, grad_accumulation_steps, grad_clip_max_norm, global_step)
+            avg_train_loss = train_step_fn(model, batch, optimizer, accelerator, grad_accumulation_steps, grad_clip_max_norm, global_step)
             if accelerator.is_main_process:
                 accelerator.print(f'Avg train loss: {avg_train_loss:.4g}')
                 writer.add_scalar('Loss/train', avg_train_loss, global_step)
@@ -155,6 +157,7 @@ def main():
     
     parser.add_argument("--model_name", type=str, required=True, help="Model name to load")
     parser.add_argument("--pooling", type=str, default="mean", required=False, help="Pooling strategy for the model")
+    parser.add_argument("--loss", type=str, default="margin_mse", required=False, help="Loss function to use")
     parser.add_argument("--checkpoint_path", type=str, required=False, help="Path to the checkpoint to resume training from")
     parser.add_argument("--num_neg_per_pos", type=int, default=1, required=False, help="Number of negatives to sample per positive")
     parser.add_argument("--lr", type=float, default=0.00002, required=False, help="Learning rate for the optimizer")
@@ -191,6 +194,7 @@ def main():
     training_loop(
         model_name=args.model_name,
         pooling=args.pooling,
+        loss=args.loss,
         checkpoint_path=args.checkpoint_path,
         num_neg_per_pos=args.num_neg_per_pos,
         lr=args.lr,
