@@ -11,7 +11,7 @@ from datasets.pos_neg import PositiveNegativeDataset
 from datasets.query_passage_pair import QueryPassagePairDataset
 from checkpoint_utils import save_global_step, load_global_step, load_best_eval_metric, save_checkpoint, delete_old_checkpoint, checkpoint_path_to_prefix
 from train.train_step import train_step_margin_mse, train_step_info_nce
-from evaluations import evaluate_model_by_ndcg
+from evaluations import evaluate_model_by_ndcgs
 from torch.optim import AdamW
 
 def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, weight_decay, dropout_prob, num_epochs, batch_size, seed, delete_old_checkpoint_steps, queries_paths, corpus_paths, train_positive_rank_results_paths, train_negative_rank_results_paths, train_qid_bases, eval_rank_results_paths, eval_qrels_paths, eval_queries_paths, eval_qid_bases, eval_every_n_batches, model_bf16, mixed_precision, grad_accumulation_steps, grad_clip_max_norm, use_ds, ds_config_path):
@@ -49,14 +49,14 @@ def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, wei
     accelerator.print(f"train data loader len: {len(train_data_loader)}")
 
     # Load eval data
-    eval_dataset = QueryPassagePairDataset(eval_queries_paths, corpus_paths, rank_results_paths=eval_rank_results_paths, qrels_paths=eval_qrels_paths, tokenizer=tokenizer, qid_bases=eval_qid_bases, max_seq_len=model.config.max_position_embeddings)
-    eval_data_loader = DataLoader(eval_dataset, batch_size=batch_size, collate_fn=eval_dataset.collate_fn)
+    eval_datasets = [QueryPassagePairDataset([query_path], [corpus_path], rank_results_paths=[rank_results_path], qrels_paths=[qrels_path], tokenizer=tokenizer, qid_bases=eval_qid_bases, max_seq_len=model.config.max_position_embeddings) for query_path, corpus_path, rank_results_path, qrels_path in zip(eval_queries_paths, corpus_paths, eval_rank_results_paths, eval_qrels_paths)]
+    eval_data_loaders = [DataLoader(eval_dataset, batch_size=batch_size, collate_fn=eval_dataset.collate_fn) for eval_dataset in eval_datasets]
     
     # Instantiate optimizer
     optimizer = AdamW(params=model.parameters(), lr=lr, weight_decay=weight_decay)
 
     # Prepare everything for distributed mixed precision
-    model, optimizer, train_data_loader, eval_data_loader = accelerator.prepare(model, optimizer, train_data_loader, eval_data_loader)
+    model, optimizer, train_data_loader, eval_data_loaders = accelerator.prepare(model, optimizer, train_data_loader, eval_data_loaders)
     accelerator.print("accelerator prepared")
     accelerator.print(f"train data loader len (accelerator): {len(train_data_loader)}")
 
@@ -91,23 +91,28 @@ def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, wei
 
             if step % eval_every_n_batches == 0 and step > 0:
                 accelerator.print("Evaluating model")
-                eval_ndcg = evaluate_model_by_ndcg(model, eval_data_loader, accelerator)
+                eval_ndcgs = evaluate_model_by_ndcgs(model, eval_data_loaders, accelerator)
+                avg_eval_ndcg = sum(eval_ndcgs) / len(eval_ndcgs) # take average
                 accelerator.print("Evaluated model")
 
                 if accelerator.is_main_process:
-                    accelerator.print(f'Avg ndcg: {eval_ndcg:.4g}')
-                    writer.add_scalar('ndcg/eval', eval_ndcg, global_step)
+                    accelerator.print(f'Avg ndcg: {avg_eval_ndcg:.4g}')
+                    writer.add_scalar('ndcg/eval', avg_eval_ndcg, global_step)
 
-                if eval_ndcg > best_eval_metric:
+                    for i, ndcg in enumerate(eval_ndcgs):
+                        accelerator.print(f'Ndcg eval {i}: {ndcg:.4g}')
+                        writer.add_scalar(f'ndcg/eval_{i}', ndcg, global_step)
+
+                if avg_eval_ndcg > best_eval_metric:
                     new_checkpoint_prefix = f'{save_path}-step-{global_step}'
-                    save_checkpoint(accelerator, model, eval_ndcg, new_checkpoint_prefix)
+                    save_checkpoint(accelerator, model, avg_eval_ndcg, new_checkpoint_prefix)
 
                     # NOTE: only delete old checkpoint if new one is within delete_old_checkpoint_steps
                     if global_step - last_saved_global_step < delete_old_checkpoint_steps:
                         delete_old_checkpoint(accelerator, checkpoint_prefix)
 
                     checkpoint_prefix = new_checkpoint_prefix
-                    best_eval_metric = eval_ndcg
+                    best_eval_metric = avg_eval_ndcg
                     last_saved_global_step = global_step
 
             global_step += 1
@@ -116,21 +121,27 @@ def training_loop(model_name, pooling, checkpoint_path, num_neg_per_pos, lr, wei
         accelerator.wait_for_everyone()
 
         accelerator.print("Evaluating model at the end of the epoch")
-        eval_ndcg = evaluate_model_by_ndcg(model, eval_data_loader, accelerator)
-        if accelerator.is_main_process:
-            accelerator.print(f'Avg ndcg: {eval_ndcg:.4g}')
-            writer.add_scalar('ndcg/eval', eval_ndcg, global_step)
+        eval_ndcgs = evaluate_model_by_ndcgs(model, eval_data_loaders, accelerator)
+        avg_eval_ndcg = sum(eval_ndcgs) / len(eval_ndcgs) # take average
 
-        if eval_ndcg > best_eval_metric:
+        if accelerator.is_main_process:
+            accelerator.print(f'Avg ndcg: {avg_eval_ndcg:.4g}')
+            writer.add_scalar('ndcg/eval', avg_eval_ndcg, global_step)
+
+            for i, ndcg in enumerate(eval_ndcgs):
+                accelerator.print(f'Ndcg eval {i}: {ndcg:.4g}')
+                writer.add_scalar(f'ndcg/eval_{i}', ndcg, global_step)
+
+        if avg_eval_ndcg > best_eval_metric:
             new_checkpoint_prefix = f'{save_path}-step-{global_step}'
-            save_checkpoint(accelerator, model, eval_ndcg, new_checkpoint_prefix)
+            save_checkpoint(accelerator, model, avg_eval_ndcg, new_checkpoint_prefix)
 
             # NOTE: only delete old checkpoint if new one is within delete_old_checkpoint_steps
             if global_step - last_saved_global_step < delete_old_checkpoint_steps:
                 delete_old_checkpoint(accelerator, checkpoint_prefix)
 
             checkpoint_prefix = new_checkpoint_prefix
-            best_eval_metric = eval_ndcg
+            best_eval_metric = avg_eval_ndcg
             last_saved_global_step = global_step
         
         accelerator.wait_for_everyone()

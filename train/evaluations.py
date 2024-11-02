@@ -40,52 +40,55 @@ def evaluate_model_by_loss(model, eval_data_loader, loss_fn, accelerator):
     model.train()
     return avg_eval_loss
 
-def evaluate_model_by_ndcg(model, eval_data_loader, accelerator):
+def evaluate_model_by_ndcgs(model, eval_data_loaders, accelerator):
     model.eval()
 
     calc_ndcg = torchmetrics.retrieval.RetrievalNormalizedDCG(top_k=10)
 
-    all_preds = []
-    all_labels = []
-    all_indexes = []
+    ndcgs = []
+    for eval_data_loader in eval_data_loaders:
+        all_preds = []
+        all_labels = []
+        all_indexes = []
 
-    def hash_id(id_str):
-        return int(hashlib.sha256(id_str.encode()).hexdigest(), 16) % (2**32 - 1)
+        def hash_id(id_str):
+            return int(hashlib.sha256(id_str.encode()).hexdigest(), 16) % (2**32 - 1)
 
-    with torch.no_grad():
-        for i, batch in enumerate(eval_data_loader):
-            accelerator.print(f"Processing batch {i}/{len(eval_data_loader)}")
+        with torch.no_grad():
+            for i, batch in enumerate(eval_data_loader):
+                accelerator.print(f"Processing batch {i}/{len(eval_data_loader)}")
 
-            qids = torch.tensor([hash_id(qid) for qid in batch["qids"]])
-            labels = batch["labels"]
-            pairs = batch["pairs"]
-            
-            outputs = model(**pairs)
-            output_logits = outputs.logits
+                qids = torch.tensor([hash_id(qid) for qid in batch["qids"]])
+                labels = batch["labels"]
+                pairs = batch["pairs"]
+                
+                outputs = model(**pairs)
+                output_logits = outputs.logits
 
-            if output_logits.dim() > 1:
-                preds_for_batch = output_logits.squeeze(1)
-            else:
-                preds_for_batch = output_logits
+                if output_logits.dim() > 1:
+                    preds_for_batch = output_logits.squeeze(1)
+                else:
+                    preds_for_batch = output_logits
 
-            labels_for_batch = labels.long()
-            indices_for_batch = qids.long()
+                labels_for_batch = labels.long()
+                indices_for_batch = qids.long()
 
-            all_preds.append(preds_for_batch)
-            all_labels.append(labels_for_batch)
-            all_indexes.append(indices_for_batch)
+                all_preds.append(preds_for_batch)
+                all_labels.append(labels_for_batch)
+                all_indexes.append(indices_for_batch)
 
-    # combine subarrays into single tensor
-    all_preds = torch.cat(all_preds)
-    all_labels = torch.cat(all_labels)
-    all_indexes = torch.cat(all_indexes).long()
+        # combine subarrays into single tensor
+        all_preds = torch.cat(all_preds)
+        all_labels = torch.cat(all_labels)
+        all_indexes = torch.cat(all_indexes).long()
 
-    accelerator.print("Gathering losses")
-    all_preds = accelerator.gather(all_preds)
-    all_labels = accelerator.gather(all_labels)
-    all_indexes = accelerator.gather(all_indexes)
+        accelerator.print("Gathering losses")
+        all_preds = accelerator.gather(all_preds)
+        all_labels = accelerator.gather(all_labels)
+        all_indexes = accelerator.gather(all_indexes)
 
-    ndcg = calc_ndcg(all_preds, all_labels, all_indexes)
+        ndcg = calc_ndcg(all_preds, all_labels, all_indexes)
+        ndcgs.append(ndcg.item())
 
     model.train()
-    return ndcg.item()
+    return ndcgs
