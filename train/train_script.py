@@ -166,7 +166,7 @@ def main():
     parser.add_argument("--num_epochs", type=int, default=3, required=False, help="Number of epochs for training")
     parser.add_argument("--batch_size_per_gpu", type=int, default=8, required=False, help="Batch size per GPU")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility (optional, default=42)")
-    parser.add_argument("--delete_old_checkpoint_steps", type=int, default=8192, help="Delete old checkpoint if new one is within this number of steps (optional, default=8192)")
+    parser.add_argument("--delete_old_checkpoint_steps", type=int, default=4096, help="Delete old checkpoint if new one is within this number of steps (optional, default=4096)")
 
     # NOTE: can take multiple items per arg
     parser.add_argument("--queries_paths", type=str, nargs='+', required=True, help="Paths to the queries JSONL files")

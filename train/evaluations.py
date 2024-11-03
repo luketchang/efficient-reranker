@@ -43,7 +43,7 @@ def evaluate_model_by_loss(model, eval_data_loader, loss_fn, accelerator):
 def evaluate_model_by_ndcgs(model, eval_data_loaders, accelerator):
     model.eval()
 
-    calc_ndcg = torchmetrics.retrieval.RetrievalNormalizedDCG(top_k=10)
+    calc_ndcg = torchmetrics.retrieval.RetrievalNormalizedDCG(top_k=10).cpu()
 
     ndcgs = []
     for eval_data_loader in eval_data_loaders:
@@ -58,7 +58,7 @@ def evaluate_model_by_ndcgs(model, eval_data_loaders, accelerator):
             for i, batch in enumerate(eval_data_loader):
                 accelerator.print(f"Processing batch {i}/{len(eval_data_loader)}")
 
-                qids = torch.tensor([hash_id(qid) for qid in batch["qids"]])
+                qids = torch.tensor([hash_id(qid) for qid in batch["qids"]]).to(accelerator.device)
                 labels = batch["labels"]
                 pairs = batch["pairs"]
                 
@@ -87,7 +87,7 @@ def evaluate_model_by_ndcgs(model, eval_data_loaders, accelerator):
         all_labels = accelerator.gather(all_labels)
         all_indexes = accelerator.gather(all_indexes)
 
-        ndcg = calc_ndcg(all_preds, all_labels, all_indexes)
+        ndcg = calc_ndcg(all_preds.cpu(), all_labels.cpu(), all_indexes.cpu())
         ndcgs.append(ndcg.item())
 
     model.train()
