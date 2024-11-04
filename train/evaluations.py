@@ -1,7 +1,5 @@
 import torch
-import torchmetrics
-import torchmetrics.retrieval
-import hashlib
+from beir.retrieval.evaluation import EvaluateRetrieval
 
 def evaluate_model_by_loss(model, eval_data_loader, loss_fn, accelerator):
     model.eval()
@@ -43,22 +41,19 @@ def evaluate_model_by_loss(model, eval_data_loader, loss_fn, accelerator):
 def evaluate_model_by_ndcgs(model, eval_data_loaders, accelerator):
     model.eval()
 
-    calc_ndcg = torchmetrics.retrieval.RetrievalNormalizedDCG(top_k=10).cpu()
-
     ndcgs = []
     for eval_data_loader in eval_data_loaders:
-        all_preds = []
-        all_labels = []
-        all_indexes = []
-
-        def hash_id(id_str):
-            return int(hashlib.sha256(id_str.encode()).hexdigest(), 16) % (2**32 - 1)
+        all_qids = []
+        all_pids = []
+        all_preds = torch.tensor([]).to(accelerator.device)
+        all_labels = torch.tensor([]).to(accelerator.device)
 
         with torch.no_grad():
             for i, batch in enumerate(eval_data_loader):
                 accelerator.print(f"Processing batch {i}/{len(eval_data_loader)}")
 
-                qids = torch.tensor([hash_id(qid) for qid in batch["qids"]]).to(accelerator.device)
+                qids = batch["qids"]
+                pids = batch["pids"]
                 labels = batch["labels"]
                 pairs = batch["pairs"]
 
@@ -71,24 +66,47 @@ def evaluate_model_by_ndcgs(model, eval_data_loaders, accelerator):
                     preds_for_batch = output_logits
 
                 labels_for_batch = labels.long()
-                indices_for_batch = qids.long()
 
-                all_preds.append(preds_for_batch)
-                all_labels.append(labels_for_batch)
-                all_indexes.append(indices_for_batch)
-
-        # combine subarrays into single tensor
-        all_preds = torch.cat(all_preds)
-        all_labels = torch.cat(all_labels)
-        all_indexes = torch.cat(all_indexes).long()
+                all_qids = all_qids + qids
+                all_pids = all_pids + pids
+                all_preds = torch.cat([all_preds, preds_for_batch])
+                all_labels = torch.cat([all_labels, labels_for_batch])
 
         accelerator.print("Gathering losses")
-        all_preds = accelerator.gather(all_preds)
-        all_labels = accelerator.gather(all_labels)
-        all_indexes = accelerator.gather(all_indexes)
+        qids = accelerator.gather_for_metrics(all_qids)
+        pids = accelerator.gather_for_metrics(all_pids)
+        all_preds = accelerator.gather_for_metrics(all_preds)
+        all_labels = accelerator.gather_for_metrics(all_labels)
 
-        ndcg = calc_ndcg(all_preds.cpu(), all_labels.cpu(), all_indexes.cpu())
-        ndcgs.append(ndcg.item())
+        ndcg, _map, recall, precision = calc_metrics(qids, pids, all_preds, all_labels)
+        accelerator.print(f"NDCGs: {ndcg}")
+        ndcgs.append(ndcg["NDCG@10"])
 
     model.train()
     return ndcgs
+
+def calc_metrics(qids, pids, preds, labels, k_values=[1, 5, 10, 50, 100]):
+    # Make sure all tensors are on the CPU
+    preds, labels = preds.cpu(), labels.cpu()
+
+    qrels = {}
+    rank_results = {}
+
+    for i in range(len(qids)):
+        qid = str(qids[i])
+        pid = str(pids[i])
+        label = int(labels[i].item())
+        pred = float(preds[i].item())
+        
+
+        if qid not in qrels:
+            qrels[qid] = {}
+        if label > 0:
+            qrels[qid][pid] = label
+
+        if qid not in rank_results:
+            rank_results[qid] = {}
+        rank_results[qid][pid] = pred
+
+    eval_results = EvaluateRetrieval.evaluate(qrels, rank_results, k_values)
+    return eval_results

@@ -18,7 +18,7 @@ def margin_mse_loss(positive_scores, negative_scores, positive_labels, negative_
     loss = torch.mean(torch.pow((positive_scores_repeated - negative_scores) - (positive_labels_repeated - negative_labels), 2))
     return loss
     
-def info_nce_loss(positive_scores, negative_scores, temperature=0.07):
+def info_nce_loss(positive_scores, negative_scores, temperature=1.0):
     """
     Computes InfoNCE loss as per the formula.
     
@@ -48,7 +48,7 @@ def info_nce_loss(positive_scores, negative_scores, temperature=0.07):
     
     return loss
 
-def combined_loss(positive_scores, negative_scores, positive_labels, negative_labels, alpha=0.8, beta=0.2, mse_to_nce_scale_factor=0.001, temperature=0.07):
+def combined_loss(positive_scores, negative_scores, positive_labels, negative_labels, alpha=0.8, beta=0.2, temperature=1.0):
     """
     Combines margin MSE loss and InfoNCE loss with appropriate weighting and mean normalization.
 
@@ -68,7 +68,7 @@ def combined_loss(positive_scores, negative_scores, positive_labels, negative_la
     negative_scores_nce = negative_scores.view(len(positive_scores), -1)  # Shape: (batch_size, num_negatives)
 
     # Compute margin MSE loss
-    mse_loss = margin_mse_loss(positive_scores, negative_scores, positive_labels, negative_labels) * mse_to_nce_scale_factor
+    mse_loss = margin_mse_loss(positive_scores, negative_scores, positive_labels, negative_labels) # * mse_to_nce_scale_factor
 
     # Compute InfoNCE loss
     nce_loss = info_nce_loss(positive_scores, negative_scores_nce, temperature=temperature)
