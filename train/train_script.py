@@ -10,7 +10,7 @@ import argparse
 from datasets.pos_neg import PositiveNegativeDataset
 from datasets.query_passage_pair import QueryPassagePairDataset
 from checkpoint_utils import save_global_step, load_global_step, load_best_eval_metric, save_checkpoint, delete_old_checkpoint, checkpoint_path_to_prefix
-from train.train_step import train_step_margin_mse, train_step_info_nce
+from train.train_step import train_step_margin_mse, train_step_info_nce, train_step_combined_margin_mse_info_nce
 from evaluations import evaluate_model_by_ndcgs
 from torch.optim import AdamW
 
@@ -42,7 +42,15 @@ def training_loop(model_name, pooling, loss, checkpoint_path, num_neg_per_pos, l
     model.config.use_cache = False
     model.deberta.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False}) # TODO: fix hack
 
-    train_step_fn = train_step_margin_mse if loss == "margin_mse" else train_step_info_nce
+    train_step_fn = None
+    if loss == "margin_mse":
+        train_step_fn = train_step_margin_mse
+    elif loss == "info_nce":
+        train_step_fn = train_step_info_nce
+    elif loss == "combined":
+        train_step_fn = train_step_combined_margin_mse_info_nce
+    else:
+        raise ValueError(f"Invalid loss function: {loss}")
 
     # Load train data
     tokenizer = AutoTokenizer.from_pretrained(model_name, return_dict=True)

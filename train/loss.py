@@ -24,12 +24,15 @@ def info_nce_loss(positive_scores, negative_scores, temperature=0.07):
     
     Args:
         positive_scores (torch.Tensor): Tensor of shape (batch_size,) containing relevance scores for the positive document.
-        negative_scores (torch.Tensor): Tensor of shape (batch_size, num_negatives) containing relevance scores for negative documents.
+        negative_scores (torch.Tensor): Tensor of shape (batch_size,) containing relevance scores for negative documents. Reshaped to be (batch_size, num_negatives_per_positive).
         temperature (float): Temperature scaling factor.
 
     Returns:
         torch.Tensor: Scalar InfoNCE loss.
     """
+    # reshape negative scores to have n negatives per positive
+    negative_scores = negative_scores.view(len(positive_scores), -1)
+
     # Divide the scores by temperature
     positive_scores = positive_scores / temperature
     negative_scores = negative_scores / temperature
@@ -44,4 +47,35 @@ def info_nce_loss(positive_scores, negative_scores, temperature=0.07):
     loss = F.cross_entropy(logits, labels)
     
     return loss
-    
+
+def combined_loss(positive_scores, negative_scores, positive_labels, negative_labels, alpha=0.8, beta=0.2, mse_to_nce_scale_factor=0.001, temperature=0.07):
+    """
+    Combines margin MSE loss and InfoNCE loss with appropriate weighting and mean normalization.
+
+    Args:
+        positive_scores (torch.Tensor): Tensor of shape (batch_size,) containing relevance scores for the positive document.
+        negative_scores (torch.Tensor): Tensor of shape (batch_size,) containing relevance scores for negative documents. Reshaped to be (batch_size, num_negatives_per_positive).
+        positive_labels (torch.Tensor): Tensor of shape (batch_size,) containing relevance labels for the positive document.
+        negative_labels (torch.Tensor): Tensor of shape (batch_size * num_negatives,) containing relevance labels for negative documents.
+        alpha (float): Weight for the margin MSE loss.
+        beta (float): Weight for the InfoNCE loss.
+        temperature (float): Temperature parameter for InfoNCE loss.
+
+    Returns:
+        torch.Tensor: Combined loss (scalar).
+    """
+    # Reshape negative_scores for InfoNCE loss
+    negative_scores_nce = negative_scores.view(len(positive_scores), -1)  # Shape: (batch_size, num_negatives)
+
+    # Compute margin MSE loss
+    mse_loss = margin_mse_loss(positive_scores, negative_scores, positive_labels, negative_labels) * mse_to_nce_scale_factor
+
+    # Compute InfoNCE loss
+    nce_loss = info_nce_loss(positive_scores, negative_scores_nce, temperature=temperature)
+
+    print(f"MSE Loss: {mse_loss}, NCE Loss: {nce_loss}")
+
+    # Combine the two normalized losses with respective weights
+    total_loss = alpha * nce_loss + beta * mse_loss
+
+    return total_loss

@@ -61,7 +61,7 @@ def evaluate_model_by_ndcgs(model, eval_data_loaders, accelerator):
                 qids = torch.tensor([hash_id(qid) for qid in batch["qids"]]).to(accelerator.device)
                 labels = batch["labels"]
                 pairs = batch["pairs"]
-                
+
                 outputs = model(**pairs)
                 output_logits = outputs.logits
 
