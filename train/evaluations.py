@@ -73,12 +73,12 @@ def evaluate_model_by_ndcgs(model, eval_data_loaders, accelerator):
                 all_labels = torch.cat([all_labels, labels_for_batch])
 
         accelerator.print("Gathering losses")
-        qids = accelerator.gather_for_metrics(all_qids)
-        pids = accelerator.gather_for_metrics(all_pids)
+        all_qids = accelerator.gather_for_metrics(all_qids)
+        all_pids = accelerator.gather_for_metrics(all_pids)
         all_preds = accelerator.gather_for_metrics(all_preds)
         all_labels = accelerator.gather_for_metrics(all_labels)
 
-        ndcg, _map, recall, precision = calc_metrics(qids, pids, all_preds, all_labels)
+        ndcg, _map, recall, precision = calc_metrics(all_qids, all_pids, all_preds, all_labels)
         accelerator.print(f"NDCGs: {ndcg}")
         ndcgs.append(ndcg["NDCG@10"])
 
@@ -97,15 +97,13 @@ def calc_metrics(qids, pids, preds, labels, k_values=[1, 5, 10, 50, 100]):
         pid = str(pids[i])
         label = int(labels[i].item())
         pred = float(preds[i].item())
-        
 
         if qid not in qrels:
             qrels[qid] = {}
-        if label > 0:
-            qrels[qid][pid] = label
-
         if qid not in rank_results:
             rank_results[qid] = {}
+
+        qrels[qid][pid] = label
         rank_results[qid][pid] = pred
 
     eval_results = EvaluateRetrieval.evaluate(qrels, rank_results, k_values)
