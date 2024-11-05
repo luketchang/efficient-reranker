@@ -114,12 +114,13 @@ def training_loop(model_name, pooling, loss, checkpoint_path, num_neg_per_pos, l
                         writer.add_scalar(f'ndcg/eval_{i}', ndcg, global_step)
 
                 if avg_eval_ndcg > best_eval_metric:
-                    new_checkpoint_prefix = f'{save_path}-step-{global_step}'
-                    save_checkpoint(accelerator, model, avg_eval_ndcg, new_checkpoint_prefix)
-
-                    # NOTE: only delete old checkpoint if new one is within delete_old_checkpoint_steps
-                    if global_step - last_saved_global_step < delete_old_checkpoint_steps:
-                        delete_old_checkpoint(checkpoint_prefix)
+                    if accelerator.is_main_process:
+                        new_checkpoint_prefix = f'{save_path}-step-{global_step}'
+                        save_checkpoint(accelerator, model, avg_eval_ndcg, new_checkpoint_prefix)
+    
+                        # NOTE: only delete old checkpoint if new one is within delete_old_checkpoint_steps
+                        if global_step - last_saved_global_step < delete_old_checkpoint_steps:
+                            delete_old_checkpoint(checkpoint_prefix)
 
                     checkpoint_prefix = new_checkpoint_prefix
                     best_eval_metric = avg_eval_ndcg
@@ -143,12 +144,13 @@ def training_loop(model_name, pooling, loss, checkpoint_path, num_neg_per_pos, l
                 writer.add_scalar(f'ndcg/eval_{i}', ndcg, global_step)
 
         if avg_eval_ndcg > best_eval_metric:
-            new_checkpoint_prefix = f'{save_path}-step-{global_step}'
-            save_checkpoint(accelerator, model, avg_eval_ndcg, new_checkpoint_prefix)
-
-            # NOTE: only delete old checkpoint if new one is within delete_old_checkpoint_steps
-            if global_step - last_saved_global_step < delete_old_checkpoint_steps:
-                delete_old_checkpoint(checkpoint_prefix)
+            if accelerator.is_main_process:
+                new_checkpoint_prefix = f'{save_path}-step-{global_step}'
+                save_checkpoint(accelerator, model, avg_eval_ndcg, new_checkpoint_prefix)
+    
+                # NOTE: only delete old checkpoint if new one is within delete_old_checkpoint_steps
+                if global_step - last_saved_global_step < delete_old_checkpoint_steps:
+                    delete_old_checkpoint(checkpoint_prefix)
 
             checkpoint_prefix = new_checkpoint_prefix
             best_eval_metric = avg_eval_ndcg
