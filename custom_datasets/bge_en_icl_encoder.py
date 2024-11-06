@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import Dataset
-from datasets.utils import load_data_from_jsonl, DatasetType
+from custom_datasets.utils import load_data_from_jsonl, DatasetType
 from data_utils import strip_prefixes
 
 class BgeEnIclDataset(Dataset):

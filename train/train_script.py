@@ -7,8 +7,8 @@ from transformers import AutoTokenizer
 from models.deberta_v3_reranker import DeBERTaReranker
 import os
 import argparse
-from datasets.pos_neg import PositiveNegativeDataset
-from datasets.query_passage_pair import QueryPassagePairDataset
+from custom_datasets.pos_neg import PositiveNegativeDataset
+from custom_datasets.query_passage_pair import QueryPassagePairDataset
 from checkpoint_utils import save_global_step, load_global_step, load_best_eval_metric, save_checkpoint, delete_old_checkpoint, checkpoint_path_to_prefix
 from train.train_step import train_step_margin_mse, train_step_info_nce, train_step_combined_margin_mse_info_nce
 from evaluations import evaluate_model_by_ndcgs

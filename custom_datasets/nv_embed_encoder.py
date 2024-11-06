@@ -1,5 +1,5 @@
 from torch.utils.data import Dataset
-from datasets.utils import load_data_from_jsonl, DatasetType
+from custom_datasets.utils import load_data_from_jsonl, DatasetType
 from data_utils import strip_prefixes
 
 class NvEmbedDataset(Dataset):
@@ -11,7 +11,6 @@ class NvEmbedDataset(Dataset):
         self.qrels_filter_path = qrels_filter_path
         self.benchmark = benchmark
 
-        self._load_examples_prefix(prefix_examples)
         self.data = load_data_from_jsonl(dataset_type, input_path, qrels_filter_path, start_line, max_lines)
 
     def get_query_prefix(self, benchmark):

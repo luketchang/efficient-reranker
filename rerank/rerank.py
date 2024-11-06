@@ -4,7 +4,7 @@ from collections import defaultdict
 from torch.utils.data import DataLoader
 from accelerate import Accelerator
 from transformers import AutoTokenizer
-from datasets.query_passage_pair import QueryPassagePairDataset
+from custom_datasets.query_passage_pair import QueryPassagePairDataset
 from models.deberta_v3_reranker import DeBERTaReranker
 from data_utils import strip_prefixes
 

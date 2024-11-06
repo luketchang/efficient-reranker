@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import Dataset
 from enum import Enum
-from datasets.utils import load_data_from_jsonl, DatasetType
+from custom_datasets.utils import load_data_from_jsonl, DatasetType
 
 class QwenDataset(Dataset):
     def __init__(self, dataset_type: DatasetType, input_path, tokenizer, max_seq_len=4096, start_line=0, max_lines=None, qrels_filter_path=None):

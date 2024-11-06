@@ -1,8 +1,8 @@
 import argparse
 from pymilvus import MilvusClient, connections
 from transformers import AutoModel, AutoTokenizer
-from datasets.utils import DatasetType
-from datasets.bge_en_icl_encoder import BgeEnIclDataset
+from custom_datasets.utils import DatasetType
+from custom_datasets.bge_en_icl_encoder import BgeEnIclDataset
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import torch

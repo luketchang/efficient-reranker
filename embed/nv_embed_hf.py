@@ -2,9 +2,9 @@ import argparse
 import torch
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, MilvusClient
 from transformers import AutoModel, AutoTokenizer
-from datasets.nv_embed_encoder import NvEmbedDataset
+from custom_datasets.nv_embed_encoder import NvEmbedDataset
 # from datasets.qwen_encoder import QwenDataset
-from datasets.utils import DatasetType
+from custom_datasets.utils import DatasetType
 from torch.utils.data import DataLoader
 from accelerate import Accelerator, DeepSpeedPlugin
 from embed_utils import last_token_pool

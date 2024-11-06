@@ -1,8 +1,8 @@
 import argparse
 import requests
 from pymilvus import MilvusClient, connections
-from datasets.raw_text_single import RawTextSingleDataset
-from datasets.utils import DatasetType
+from custom_datasets.raw_text_single import RawTextSingleDataset
+from custom_datasets.utils import DatasetType
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import os

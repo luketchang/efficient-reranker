@@ -3,8 +3,8 @@ import requests
 import os
 import sys
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, MilvusClient
-from datasets.raw_text_single import RawTextSingleDataset
-from datasets.utils import DatasetType
+from custom_datasets.raw_text_single import RawTextSingleDataset
+from custom_datasets.utils import DatasetType
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 

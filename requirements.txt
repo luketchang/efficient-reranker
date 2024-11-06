@@ -34,3 +34,4 @@ pymilvus
 FlagEmbedding
 peft
 beir
+einops
