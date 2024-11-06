@@ -42,19 +42,17 @@ def evaluate_model_by_ndcgs(model, eval_data_loaders, accelerator):
     model.eval()
 
     ndcgs = []
-    for eval_data_loader in eval_data_loaders:
+    for i, eval_data_loader in enumerate(eval_data_loaders):
         all_qids = []
         all_pids = []
         all_preds = torch.tensor([]).to(accelerator.device)
-        all_labels = torch.tensor([]).to(accelerator.device)
 
         with torch.no_grad():
-            for i, batch in enumerate(eval_data_loader):
-                accelerator.print(f"Processing batch {i}/{len(eval_data_loader)}")
+            for j, batch in enumerate(eval_data_loader):
+                accelerator.print(f"Processing batch {j}/{len(eval_data_loader)}")
 
                 qids = batch["qids"]
                 pids = batch["pids"]
-                labels = batch["labels"]
                 pairs = batch["pairs"]
 
                 outputs = model(**pairs)
@@ -65,45 +63,41 @@ def evaluate_model_by_ndcgs(model, eval_data_loaders, accelerator):
                 else:
                     preds_for_batch = output_logits
 
-                labels_for_batch = labels.long()
 
                 all_qids = all_qids + qids
                 all_pids = all_pids + pids
                 all_preds = torch.cat([all_preds, preds_for_batch])
-                all_labels = torch.cat([all_labels, labels_for_batch])
 
         accelerator.print("Gathering losses")
         all_qids = accelerator.gather_for_metrics(all_qids)
         all_pids = accelerator.gather_for_metrics(all_pids)
         all_preds = accelerator.gather_for_metrics(all_preds)
-        all_labels = accelerator.gather_for_metrics(all_labels)
 
-        ndcg, _map, recall, precision = calc_metrics(all_qids, all_pids, all_preds, all_labels)
+        print("i", i)
+        print(len(eval_data_loader.dataset.qrels))
+        qrels = eval_data_loader.dataset.get_qrels(0)
+        ndcg, _map, recall, precision = calc_metrics(all_qids, all_pids, all_preds, qrels)
         accelerator.print(f"NDCGs: {ndcg}")
         ndcgs.append(ndcg["NDCG@10"])
 
     model.train()
     return ndcgs
 
-def calc_metrics(qids, pids, preds, labels, k_values=[1, 5, 10, 50, 100]):
+def calc_metrics(qids, pids, preds, qrels, k_values=[1, 5, 10, 50, 100]):
     # Make sure all tensors are on the CPU
-    preds, labels = preds.cpu(), labels.cpu()
+    preds = preds.cpu()
 
-    qrels = {}
     rank_results = {}
 
     for i in range(len(qids)):
         qid = str(qids[i])
         pid = str(pids[i])
-        label = int(labels[i].item())
         pred = float(preds[i].item())
+        
 
-        if qid not in qrels:
-            qrels[qid] = {}
         if qid not in rank_results:
             rank_results[qid] = {}
 
-        qrels[qid][pid] = label
         rank_results[qid][pid] = pred
 
     eval_results = EvaluateRetrieval.evaluate(qrels, rank_results, k_values)

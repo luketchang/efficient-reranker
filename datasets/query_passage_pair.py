@@ -8,12 +8,14 @@ class QueryPassagePairDataset(Dataset):
         self.max_seq_len = max_seq_len
         self.truncation = max_seq_len is not None
         self.pairs = []
+        self.qrels = []
 
         # Loop through each dataset
         for queries_path, corpus_path, rank_results_path, qrels_path, qid_base in zip(queries_paths, corpus_paths, rank_results_paths, qrels_paths, qid_bases):
             # Load rank results and ground truth for each dataset
             rank_results = load_hits_from_rank_results_queries_corpus(rank_results_path, queries_path, corpus_path, qrels_filter_path=qrels_path, qid_base=qid_base)
-            ground_truth_pid_to_qid_to_score = load_qid_to_pid_to_score(qrels_path)
+            ground_truth_pid_to_qid_to_score = load_qid_to_pid_to_score(qrels_path, is_qrels=True)
+            self.qrels.append(ground_truth_pid_to_qid_to_score)
 
             # Process each rank result
             for rank_result in rank_results:
@@ -57,3 +59,6 @@ class QueryPassagePairDataset(Dataset):
             "labels": torch.tensor(labels),
             "pairs": tokenized_pairs,
         }
+    
+    def get_qrels(self, i):
+        return self.qrels[i]

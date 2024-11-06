@@ -15,8 +15,8 @@ def main(model_name, checkpoint_path, qrels_path, rank_results_path, queries_pat
     if checkpoint_path:
         state_dict = torch.load(checkpoint_path, map_location=accelerator.device)
         model.load_state_dict(state_dict)
-
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    
+    tokenizer = AutoTokenizer.from_pretrained(model_name, return_dict=True)
     dataset = QueryPassagePairDataset([queries_path], [corpus_path], [rank_results_path], [qrels_path], qid_bases=[qid_base], tokenizer=tokenizer, max_seq_len=model.config.max_position_embeddings, hits_per_query=hits_per_query)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, collate_fn=dataset.collate_fn)
 
@@ -25,38 +25,40 @@ def main(model_name, checkpoint_path, qrels_path, rank_results_path, queries_pat
     model.eval()
     new_rank_results = defaultdict(list)
     
-    with open(output_path, 'a') as f:  # Open file in append mode for incremental writes
-        for i, batch in enumerate(dataloader):
-            print(f"Processing batch {i}/{len(dataloader)}")
+    with open(output_path, 'a') as f:
+        with torch.no_grad():
+            for i, batch in enumerate(dataloader):
+                print(f"Processing batch {i}/{len(dataloader)}")
 
-            inputs = batch["pairs"]
-            outputs = model(**inputs)
-            output_logits = outputs.logits
+                inputs = batch["pairs"]
+                    
+                outputs = model(**inputs)
+                output_logits = outputs.logits
 
-            for j in range(len(output_logits)):
-                qid = batch["qids"][j]
-                pid = batch["pids"][j]
-                score = output_logits[j].item()
-                new_rank_results[qid].append({"pid": pid, "score": score})
+                for j in range(len(output_logits)):
+                    qid = batch["qids"][j]
+                    pid = batch["pids"][j]
+                    score = output_logits[j].item()
+                    new_rank_results[qid].append({"pid": pid, "score": score})
 
-            # Write results to file every `batch_write_interval` batches
-            if (i + 1) % flush_interval == 0:
-                print(f"Writing results to file after batch {i + 1}")
+                # Write results to file every `batch_write_interval` batches
+                if (i + 1) % flush_interval == 0:
+                    print(f"Writing results to file after batch {i + 1}")
+                    for qid in sorted(new_rank_results.keys(), key=lambda k: int(strip_prefixes(k), qid_base)):
+                        sorted_pid_and_scores = sorted(new_rank_results[qid], key=lambda x: x['score'], reverse=True)
+                        for item in sorted_pid_and_scores:
+                            f.write(f"{qid}\t{item['pid']}\t{item['score']}\n")
+                    f.flush()  # Ensure data is written to disk
+                    new_rank_results.clear()  # Clear results to start fresh for the next interval
+
+            # Write any remaining results that didn't reach the batch_write_interval
+            if new_rank_results:
+                print("Writing remaining results to file")
                 for qid in sorted(new_rank_results.keys(), key=lambda k: int(strip_prefixes(k), qid_base)):
                     sorted_pid_and_scores = sorted(new_rank_results[qid], key=lambda x: x['score'], reverse=True)
                     for item in sorted_pid_and_scores:
                         f.write(f"{qid}\t{item['pid']}\t{item['score']}\n")
-                f.flush()  # Ensure data is written to disk
-                new_rank_results.clear()  # Clear results to start fresh for the next interval
-
-        # Write any remaining results that didn't reach the batch_write_interval
-        if new_rank_results:
-            print("Writing remaining results to file")
-            for qid in sorted(new_rank_results.keys(), key=lambda k: int(strip_prefixes(k), qid_base)):
-                sorted_pid_and_scores = sorted(new_rank_results[qid], key=lambda x: x['score'], reverse=True)
-                for item in sorted_pid_and_scores:
-                    f.write(f"{qid}\t{item['pid']}\t{item['score']}\n")
-            f.flush()
+                f.flush()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Rerank passages using a pre-trained model")
@@ -71,8 +73,11 @@ if __name__ == "__main__":
     parser.add_argument("--hits_per_query", type=int, default=100, help="Number of hits per query")
     parser.add_argument("--qid_base", type=int, default=10, help="Base of qid (e.g. 10, 16)")
     parser.add_argument("--flush_interval", type=int, default=256, help="Interval of batches to write results to file")
+    parser.add_argument("--seed", type=int, default=43, help="Random seed for reproducibility")
 
     args = parser.parse_args()
+
+    torch.manual_seed(args.seed)
 
     main(
         model_name=args.model_name,

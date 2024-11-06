@@ -79,7 +79,7 @@ def load_pids_to_passages(corpus_file, append_title=True):
             corpus[pid] = passage
     return corpus
 
-def load_qid_to_pid_to_score(rank_results_file):
+def load_qid_to_pid_to_score(rank_results_file, is_qrels=False):
     qid_to_pid_to_score = {}
     with open(rank_results_file, 'r') as f:
         for line in f:
@@ -87,7 +87,10 @@ def load_qid_to_pid_to_score(rank_results_file):
                 continue
 
             qid, pid, score = line.strip().split('\t')
-            score = float(score)
+            if is_qrels:
+                score = int(float(score))
+            else:
+                score = float(score)
             
             if qid not in qid_to_pid_to_score:
                 qid_to_pid_to_score[qid] = {}
