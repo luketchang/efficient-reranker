@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 def create_collection(client, collection_name, dim):
     fields = [
-        FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=False),
+        FieldSchema(name="id", dtype=DataType.VARCHAR, is_primary=True, auto_id=False, max_length=64),
         FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=dim),
         FieldSchema(name="text", dtype=DataType.VARCHAR, max_length=32_768),
     ]
@@ -23,7 +23,7 @@ def create_collection(client, collection_name, dim):
 def fetch_embeddings(api_url, api_key, input_texts):
     payload = {
         "model": "nvidia/nv-embedqa-mistral-7b-v2",
-        "encoding_format": "float",
+        # "encoding_format": "float",
         "truncate": "END",
         "input": input_texts,
         "input_type": "passage",

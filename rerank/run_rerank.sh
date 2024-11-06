@@ -12,8 +12,8 @@ echo "Python path: $PYTHONPATH"
 
 PYTHONPATH=$PWD python rerank/rerank.py \
     --model_name microsoft/deberta-v3-large \
-    --checkpoint_path new-microsoft/deberta-v3-large-margin_mse-step-12287-inference.pth \
-    --rank_results_path data/fiqa/bge_en_icl_all_1000.tsv  \
+    --checkpoint_path new-microsoft/deberta-v3-large-margin_mse-step-2815-inference.pth \
+    --rank_results_path data/fiqa/nv_rerank_all_1000.tsv  \
     --qrels_path data/fiqa/qrels/test.tsv \
     --queries_path data/fiqa/queries.jsonl \
     --corpus_path data/fiqa/corpus.jsonl \

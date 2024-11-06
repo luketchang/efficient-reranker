@@ -42,6 +42,9 @@ def load_data_from_jsonl(dataset_type, input_path, qrels_filter_path=None, start
 
                 title = data.get("title", "")
                 text = data["text"]
+                if text == "":
+                    continue
+                
                 passage = title + "\n" + text if title and title != "" else text
                 data_arr.append({"id": id, "text": passage})
 
