@@ -33,3 +33,5 @@ nq
 !*.md
 !*.sh
 *.tar
+
+deberta-v3-*
