@@ -87,7 +87,7 @@ def main():
         # Perform search in Milvus for the batch of queries
         results_batch = client.search(
             collection_name=args.collection_name,
-            data=query_vectors,  # Move to CPU for Milvus
+            data=query_vectors,
             anns_field="vector",
             search_params={"metric_type": "IP", "params": {"nprobe": args.nprobe}},
             limit=args.k,
