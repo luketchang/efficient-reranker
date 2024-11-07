@@ -1,7 +1,7 @@
 import argparse
 import torch
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, MilvusClient
-from transformers import AutoModel, AutoTokenizer
+from transformers import AutoModel
 from custom_datasets.nv_embed_encoder import NvEmbedDataset
 # from datasets.qwen_encoder import QwenDataset
 from custom_datasets.utils import DatasetType
@@ -22,7 +22,7 @@ def create_collection(client, collection_name, dim):
         schema=schema,
     )
 
-def encode_data(accelerator, model, dataloader, tokenizer, client, collection_name, flush_interval=32):
+def encode_data(accelerator, model, dataloader, client, collection_name, flush_interval=32):
     max_length = 32768
     buffered_data = []
     for batch_idx, batch in enumerate(tqdm(dataloader, desc=f"Processing batches")):
@@ -70,6 +70,7 @@ def encode_data(accelerator, model, dataloader, tokenizer, client, collection_na
 def main():
     parser = argparse.ArgumentParser(description='Milvus embedding script with Sentence Transformers')
     parser.add_argument('--model_name', type=str, required=True, help='Sentence transformer model name')
+    parser.add_argument('--benchmark', type=str, help='Benchmark name')
     parser.add_argument('--input_path', type=str, required=True, help='Path to the input JSONL file')
     parser.add_argument("--start_line", type=int, default=0, help="Starting line number to read from the input file")
     parser.add_argument('--max_input_lines', type=int, default=None, help='Maximum number of lines to read from the input file')
@@ -98,8 +99,7 @@ def main():
 
     # Load the dataset to embed
     accelerator.print(f"Loading dataset from '{args.input_path}'...")
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    dataset = NvEmbedDataset(DatasetType.DOC, args.input_path, tokenizer, max_seq_len=args.max_seq_len, start_line=args.start_line, max_lines=args.max_input_lines)
+    dataset = NvEmbedDataset(DatasetType.DOC, args.input_path, args.benchmark, max_seq_len=args.max_seq_len, start_line=args.start_line, max_lines=args.max_input_lines)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, collate_fn=dataset.collate_fn)
 
     # Load the model and get embedding dimensions
@@ -123,7 +123,7 @@ def main():
 
     # Process file and insert data into Milvus in batches
     accelerator.print(f"Worker {accelerator.process_index} processing file '{args.input_path}'")
-    encode_data(accelerator, model, dataloader, tokenizer, client, args.collection_name, flush_interval=args.flush_interval)
+    encode_data(accelerator, model, dataloader, client, args.collection_name, flush_interval=args.flush_interval)
     accelerator.print(f"Data processing complete for process {accelerator.process_index}")
 
     # Ensure everyone has written data before creating index
