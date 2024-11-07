@@ -12,8 +12,8 @@ echo "Python path: $PYTHONPATH"
 
 PYTHONPATH=$PWD accelerate launch embed/nv_embed_hf.py \
     --model_name nvidia/NV-Embed-v2 \
-    --input_path data/fiqa/corpus.jsonl \
-    --collection_name fiqa_corpus_nv_hf \
+    --input_path data/nq/corpus.jsonl \
+    --collection_name nq_corpus_nv_hf \
     --batch_size 8 \
     --milvus_uri $MILVUS_URI \
     --milvus_token $MILVUS_TOKEN \

@@ -20,6 +20,7 @@ def write_results_to_file(output_path, query_ids, results_batch, qrels_qid_prefi
 def main():
     parser = argparse.ArgumentParser(description="Perform similarity search on Milvus and output qrels.")
     parser.add_argument("--model_name", type=str, required=True, help="Name of the embedding model")
+    parser.add_argument("--benchmark", type=str, required=True, help="Name of benchmark")
     parser.add_argument("--queries_path", type=str, required=True, help="Path to the queries JSONL file")
     parser.add_argument("--qrels_filter_path", type=str, help="Path to the qrels TSV file that will filter out queries")
     parser.add_argument("--collection_name", type=str, required=True, help="Milvus collection name")
@@ -36,12 +37,7 @@ def main():
     args = parser.parse_args()
 
     # Setup accelerator
-    deepspeed_plugin = DeepSpeedPlugin(
-        zero_stage=1,           # ZeRO stage 1 for inference?
-        offload_optimizer_device="none",
-        offload_param_device="none",
-    ) if args.use_ds else None
-    accelerator = Accelerator(deepspeed_plugin=deepspeed_plugin, device_placement=True)
+    accelerator = Accelerator(device_placement=True)
 
     # Load the tokenizer and dataset for queries
     print(f"Loading tokenizer and dataset from '{args.queries_path}'...")
@@ -87,7 +83,7 @@ def main():
         # Perform search in Milvus for the batch of queries
         results_batch = client.search(
             collection_name=args.collection_name,
-            data=query_vectors,
+            data=query_vectors.cpu().numpy(),
             anns_field="vector",
             search_params={"metric_type": "IP", "params": {"nprobe": args.nprobe}},
             limit=args.k,

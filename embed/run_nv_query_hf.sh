@@ -10,8 +10,9 @@ echo "Starting script at $(date)"
 echo "Current working directory: $PWD"
 echo "Python path: $PYTHONPATH"
 
-PYTHONPATH=$PWD accelerate launch embed/nv_query.py \
+PYTHONPATH=$PWD accelerate launch embed/nv_query_hf.py \
     --model_name nvidia/NV-Embed-v2 \
+    --benchmark fiqa \
     --queries_path data/fiqa/queries.jsonl \
     --k 1000 \
     --output_path data/fiqa/nv_embed_hf_all_1000.tsv \
