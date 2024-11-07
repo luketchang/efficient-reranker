@@ -3,11 +3,9 @@ import torch
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, MilvusClient
 from transformers import AutoModel
 from custom_datasets.nv_embed_encoder import NvEmbedDataset
-# from datasets.qwen_encoder import QwenDataset
 from custom_datasets.utils import DatasetType
 from torch.utils.data import DataLoader
 from accelerate import Accelerator, DeepSpeedPlugin
-from embed_utils import last_token_pool
 from tqdm import tqdm
 
 def create_collection(client, collection_name, dim):
