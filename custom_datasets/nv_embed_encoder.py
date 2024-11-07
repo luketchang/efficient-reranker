@@ -34,21 +34,19 @@ class NvEmbedDataset(Dataset):
         text = sample["text"]
         id = sample["id"]
 
-        prefix = self.get_query_prefix(self.benchmark) if self.dataset_type == DatasetType.QUERY else ""
-
         return {
             "id": id,
-            "text": text,
-            "prefix": prefix
+            "text": text
         }
     
     def collate_fn(self, batch):
         ids = [sample['id'] for sample in batch]
         texts = [sample['text'] for sample in batch]
-        prefixes = [sample['prefix'] for sample in batch]
+
+        prefix = self.get_query_prefix(self.benchmark) if self.dataset_type == DatasetType.QUERY else ""
 
         return {
             "ids": ids,
             "texts": texts,
-            "prefixes": prefixes
+            "prefix": prefix
         }

@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 def create_collection(client, collection_name, dim):
     fields = [
-        FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=False),
+        FieldSchema(name="id", dtype=DataType.VARCHAR, is_primary=True, auto_id=False, max_length=64),
         FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=dim),
         FieldSchema(name="text", dtype=DataType.VARCHAR, max_length=32_768),
     ]
@@ -30,11 +30,10 @@ def encode_data(accelerator, model, dataloader, tokenizer, client, collection_na
 
         pids = batch["ids"]
         texts = batch["texts"]
-        prefixes = batch["prefixes"]
-
+        prefix = batch["prefix"]
 
         with torch.no_grad():
-            vectors = model.encode(texts, instruction=prefixes, max_length=max_length)
+            vectors = model.encode(texts, instruction=prefix, max_length=max_length)
 
 
         # NOTE: we keep data on GPU here (we batch move to CPU later)
