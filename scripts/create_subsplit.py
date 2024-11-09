@@ -27,7 +27,7 @@ def main(qrels_path, rank_results_path, queries_path, split_amounts, samples_per
     qrels_output_paths = [qrels_path.replace(".tsv", f"_sampled_{n}.tsv") for n in split_amounts]
     queries_output_paths = [queries_path.replace(".jsonl", f"_sampled_{n}.jsonl") for n in split_amounts]
     rank_results_paths = [rank_results_path.replace(".tsv", f"_sampled_{n}.tsv") for n in split_amounts]
-        
+
     for i in range(len(split_amounts)):
         with open(qrels_output_paths[i], 'w') as f:
             for qid, pid_to_score in sorted(sampled_qrels[i].items(), key=lambda x: int(strip_prefixes(x[0]), qid_base)):
@@ -58,4 +58,4 @@ if __name__ == "__main__":
     parser.add_argument("--qid_base", type=int, default=10, help="Base of the qid interpreted as int.")
     
     args = parser.parse_args()
-    main(args.qrels_path, args.rank_results_path, args.queries_path, args.split_amounts, args.samples_per_query, args.qid_base,)
+    main(args.qrels_path, args.rank_results_path, args.queries_path, args.split_amounts, args.samples_per_query, args.qid_base)

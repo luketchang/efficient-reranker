@@ -3,7 +3,7 @@ from custom_datasets.utils import load_data_from_jsonl, DatasetType
 from data_utils import strip_prefixes
 
 class NvEmbedDataset(Dataset):
-    def __init__(self, dataset_type: DatasetType, input_path, benchmark, max_seq_len=4096, start_line=0, max_lines=None, prefix_examples=None, qrels_filter_path=None):
+    def __init__(self, dataset_type: DatasetType, input_path, benchmark, max_seq_len=4096, start_line=0, max_lines=None, qrels_filter_path=None):
         self.dataset_type = dataset_type
         self.input_path = input_path
         self.max_seq_len = max_seq_len
