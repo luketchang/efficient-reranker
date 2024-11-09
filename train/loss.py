@@ -48,7 +48,7 @@ def info_nce_loss(positive_scores, negative_scores, temperature=1.0):
     
     return loss
 
-def combined_loss(positive_scores, negative_scores, positive_labels, negative_labels, alpha=0.7, beta=0.3, mse_to_nce_scale_factor=0.001, temperature=0.07):
+def combined_loss(positive_scores, negative_scores, positive_labels, negative_labels, alpha=0.8, beta=0.2, temperature=0.07):
     """
     Combines margin MSE loss and InfoNCE loss with appropriate weighting and mean normalization.
 
@@ -68,10 +68,14 @@ def combined_loss(positive_scores, negative_scores, positive_labels, negative_la
     negative_scores_nce = negative_scores.view(len(positive_scores), -1)  # Shape: (batch_size, num_negatives)
 
     # Compute margin MSE loss
-    mse_loss = margin_mse_loss(positive_scores, negative_scores, positive_labels, negative_labels) * mse_to_nce_scale_factor
+    mse_loss = margin_mse_loss(positive_scores, negative_scores, positive_labels, negative_labels)
 
     # Compute InfoNCE loss
     nce_loss = info_nce_loss(positive_scores, negative_scores_nce, temperature=temperature)
+
+    # Scale MSE loss
+    mse_to_nce_scale_factor = nce_loss.detach() / (mse_loss.detach() + 1e-8)  # Avoid division by zero
+    mse_loss = mse_loss * mse_to_nce_scale_factor
     
     # Combine the two normalized losses with respective weights
     total_loss = alpha * mse_loss + beta * nce_loss
