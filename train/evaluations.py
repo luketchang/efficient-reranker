@@ -73,7 +73,6 @@ def evaluate_model_by_ndcgs(model, eval_data_loaders, accelerator):
         all_pids = accelerator.gather_for_metrics(all_pids)
         all_preds = accelerator.gather_for_metrics(all_preds)
 
-        print("i", i)
         print(len(eval_data_loader.dataset.qrels))
         qrels = eval_data_loader.dataset.get_qrels(0)
         ndcg, _map, recall, precision = calc_metrics(all_qids, all_pids, all_preds, qrels)

@@ -48,13 +48,18 @@ def info_nce_loss(positive_scores, negative_scores, temperature=1.0):
     
     return loss
 
-def combined_loss(positive_scores, negative_scores, positive_labels, negative_labels, alpha=0.8, beta=0.2, temperature=0.07):
+# Global running averages for combined loss scaling
+mse_running_avg = 1.0
+nce_running_avg = 1.0
+smoothing_factor = 0.9  # Smoothing factor for running averages
+
+def combined_loss(positive_scores, negative_scores, positive_labels, negative_labels, alpha=0.5, beta=0.5, temperature=0.1):
     """
-    Combines margin MSE loss and InfoNCE loss with appropriate weighting and mean normalization.
+    Combines margin MSE loss and InfoNCE loss with appropriate weighting and mean normalization using running average scaling.
 
     Args:
         positive_scores (torch.Tensor): Tensor of shape (batch_size,) containing relevance scores for the positive document.
-        negative_scores (torch.Tensor): Tensor of shape (batch_size,) containing relevance scores for negative documents. Reshaped to be (batch_size, num_negatives_per_positive).
+        negative_scores (torch.Tensor): Tensor of shape (batch_size * num_negatives_per_positive,) containing relevance scores for negative documents.
         positive_labels (torch.Tensor): Tensor of shape (batch_size,) containing relevance labels for the positive document.
         negative_labels (torch.Tensor): Tensor of shape (batch_size * num_negatives,) containing relevance labels for negative documents.
         alpha (float): Weight for the margin MSE loss.
@@ -64,20 +69,24 @@ def combined_loss(positive_scores, negative_scores, positive_labels, negative_la
     Returns:
         torch.Tensor: Combined loss (scalar).
     """
+    global mse_running_avg, nce_running_avg
+
     # Reshape negative_scores for InfoNCE loss
     negative_scores_nce = negative_scores.view(len(positive_scores), -1)  # Shape: (batch_size, num_negatives)
 
-    # Compute margin MSE loss
+    # Compute individual losses
     mse_loss = margin_mse_loss(positive_scores, negative_scores, positive_labels, negative_labels)
-
-    # Compute InfoNCE loss
     nce_loss = info_nce_loss(positive_scores, negative_scores_nce, temperature=temperature)
 
-    # Scale MSE loss
-    mse_to_nce_scale_factor = nce_loss.detach() / (mse_loss.detach() + 1e-8)  # Avoid division by zero
-    mse_loss = mse_loss * mse_to_nce_scale_factor
-    
+    # Update running averages for scaling
+    mse_running_avg = smoothing_factor * mse_running_avg + (1 - smoothing_factor) * mse_loss.item()
+    nce_running_avg = smoothing_factor * nce_running_avg + (1 - smoothing_factor) * nce_loss.item()
+
+    # Calculate scaling factor based on running averages
+    mse_to_nce_scale_factor = nce_running_avg / (mse_running_avg + 1e-8)  # Avoid division by zero
+    scaled_mse_loss = mse_loss * mse_to_nce_scale_factor
+
     # Combine the two normalized losses with respective weights
-    total_loss = alpha * mse_loss + beta * nce_loss
+    total_loss = alpha * scaled_mse_loss + beta * nce_loss
 
     return total_loss
