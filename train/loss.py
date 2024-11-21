@@ -48,7 +48,10 @@ def info_nce_loss(positive_scores, negative_scores, temperature=1.0):
     
     return loss
 
-def combined_loss(margin_mse_loss, info_nce_loss):
+initial_mse_loss = -1
+initial_nce_loss = -1
+
+def combined_loss(margin_mse_loss, info_nce_loss, alpha=0.8, beta=0.2):
     """
     Combines margin_mse_loss and info_nce_loss with equal contributions, dynamically adjusted.
 
@@ -59,8 +62,14 @@ def combined_loss(margin_mse_loss, info_nce_loss):
     Returns:
         torch.Tensor: Combined loss with normalized contributions.
     """
+    global initial_mse_loss, initial_nce_loss
+
+    if initial_mse_loss == -1:
+        initial_mse_loss = margin_mse_loss
+    if initial_nce_loss == -1:
+        initial_nce_loss = info_nce_loss
+
     # Normalize each loss by its detached value to balance contributions
-    combined = (margin_mse_loss / margin_mse_loss.detach() +
-                info_nce_loss / info_nce_loss.detach())
+    combined = alpha * (margin_mse_loss / initial_mse_loss) + beta * (info_nce_loss / initial_nce_loss)
 
     return combined
