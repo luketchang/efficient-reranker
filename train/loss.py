@@ -65,9 +65,9 @@ def combined_loss(margin_mse_loss, info_nce_loss, alpha=0.8, beta=0.2):
     global initial_mse_loss, initial_nce_loss
 
     if initial_mse_loss == -1:
-        initial_mse_loss = margin_mse_loss
+        initial_mse_loss = margin_mse_loss.detach()
     if initial_nce_loss == -1:
-        initial_nce_loss = info_nce_loss
+        initial_nce_loss = info_nce_loss.detach()
 
     # Normalize each loss by its detached value to balance contributions
     combined = alpha * (margin_mse_loss / initial_mse_loss) + beta * (info_nce_loss / initial_nce_loss)
