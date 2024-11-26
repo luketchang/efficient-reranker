@@ -9,10 +9,10 @@ from custom_datasets.query_passage_pair import QueryPassagePairDataset
 from models.deberta_v3_reranker import DeBERTaReranker
 from data_utils import strip_prefixes
 
-def main(model_name, checkpoint_path, qrels_path, rank_results_path, queries_path, corpus_path, batch_size, output_path, hits_per_query, qid_base, flush_interval):
+def main(model_name, precision, checkpoint_path, qrels_path, rank_results_path, queries_path, corpus_path, batch_size, output_path, hits_per_query, qid_base, flush_interval):
     accelerator = Accelerator(device_placement=True)
 
-    model = DeBERTaReranker(model_name=model_name)
+    model = DeBERTaReranker(model_name=model_name, precision=precision)
     if checkpoint_path:
         state_dict = torch.load(checkpoint_path, map_location=accelerator.device)
         model.load_state_dict(state_dict)
@@ -76,6 +76,7 @@ def main(model_name, checkpoint_path, qrels_path, rank_results_path, queries_pat
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Rerank passages using a pre-trained model")
     parser.add_argument("--model_name", type=str, required=True, help="Name of the pre-trained model")
+    parser.add_argument("--precision", type=str, default="fp32", choices=["fp32", "bf16"], help="Precision for inference")
     parser.add_argument("--checkpoint_path", type=str, default=None, help="Path to the model checkpoint")
     parser.add_argument("--rank_results_path", type=str, required=True, help="Path to the rank results file")
     parser.add_argument("--qrels_path", type=str, required=True, help="Path to the qrels file path")
@@ -94,6 +95,7 @@ if __name__ == "__main__":
 
     main(
         model_name=args.model_name,
+        precision=args.precision,
         checkpoint_path=args.checkpoint_path,
         rank_results_path=args.rank_results_path,
         qrels_path=args.qrels_path,

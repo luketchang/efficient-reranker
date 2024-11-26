@@ -2,7 +2,8 @@ import argparse
 import requests
 import sys
 import os
-from time import sleep, time
+import time
+from time import sleep
 from data_utils import load_hits_from_rank_results_queries_corpus
 from tqdm import tqdm
 

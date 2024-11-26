@@ -11,16 +11,17 @@ echo "Current working directory: $PWD"
 echo "Python path: $PYTHONPATH"
 
 PYTHONPATH=$PWD python rerank/rerank.py \
-    --model_name microsoft/deberta-v3-large \
-    --checkpoint_path new-microsoft/deberta-v3-large-margin_mse-step-2815-inference.pth \
-    --rank_results_path data/hotpotqa/bge_en_icl_all_1000.tsv  \
-    --qrels_path data/hotpotqa/qrels/test.tsv \
-    --queries_path data/hotpotqa/queries.jsonl \
-    --corpus_path data/hotpotqa/corpus.jsonl \
-    --output_path data/hotpotqa/deberta_margin_mse_reranked_top100_batch_128.tsv \
-    --batch_size 128 \
+    --model_name microsoft/deberta-v3-base \
+    --precision bf16 \
+    --checkpoint_path new-microsoft/deberta-v3-base-margin_mse-step-14278-inference.pth \
+    --rank_results_path data/nq/nv_embed_hf_all_1000.tsv  \
+    --qrels_path data/nq/qrels/test.tsv \
+    --queries_path data/nq/queries.jsonl \
+    --corpus_path data/nq/corpus.jsonl \
+    --output_path data/nq/latency_deberta_large.tsv \
+    --batch_size 100 \
     --hits_per_query 100 \
     --flush_interval 32 \
-    --qid_base 16
+    --qid_base 10
 
 echo "Script finished at $(date)"
