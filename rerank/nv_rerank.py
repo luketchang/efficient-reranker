@@ -2,7 +2,7 @@ import argparse
 import requests
 import sys
 import os
-from time import sleep
+from time import sleep, time
 from data_utils import load_hits_from_rank_results_queries_corpus
 from tqdm import tqdm
 
@@ -23,6 +23,10 @@ def main(api_url, rank_results_file, queries_file, corpus_file, output_file, sta
 
     end = min(end or len(rank_results), len(rank_results))
     start = max(0, min(start, end - 1))
+
+    # Track latency stats
+    total_latency = 0
+    total_requests = 0
 
     with open(output_file, 'a') as f:  # Use 'a' to append results incrementally
         
@@ -58,9 +62,15 @@ def main(api_url, rank_results_file, queries_file, corpus_file, output_file, sta
 
                 while True:
                     try:
+                        request_start = time.perf_counter()
                         response = requests.post(api_url, headers=headers, json=payload)
                         response.raise_for_status()
                         response_body = response.json()
+                        request_latency = (time.perf_counter() - request_start) * 1000  # Convert to milliseconds
+                        
+                        # Update latency stats
+                        total_latency += request_latency
+                        total_requests += 1
 
                         print(f"Successfully processed query {idx + 1}, batch {batch_start // window_size + 1}")
 
@@ -95,11 +105,13 @@ def main(api_url, rank_results_file, queries_file, corpus_file, output_file, sta
             # Write all sorted results for the query to the file
             f.writelines(f"{qid}\t{docid}\t{logit}\n" for qid, docid, logit in query_results)
             f.flush()  # Ensure data is written to disk
+            print(f"Average ranking latency after {total_requests} requests: {total_latency/total_requests:.2f}ms")
 
             # Reset start_entry to 0 after the first query
             start_entry = 0
 
     print(f"Results written to {output_file}")
+    print(f"Final average ranking latency: {total_latency/total_requests:.2f}s over {total_requests} requests")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Rerank hits using NVIDIA's API")
@@ -111,7 +123,7 @@ if __name__ == "__main__":
     parser.add_argument("--start", type=int, default=0, help="Starting index of queries to process")
     parser.add_argument("--end", type=int, default=None, help="Ending index of queries to process (exclusive)")
     parser.add_argument("--start_entry", type=int, default=0, help="Starting entry number within the query (batch level)")
-    parser.add_argument("--window_size", type=int, default=512, help="Number of hits to process in a single batch")
+    parser.add_argument("--window_size", type=int, default=100, help="Number of hits to process in a single batch")
     parser.add_argument("--k", type=int, default=100, help="Number of hits to keep for each query")
     parser.add_argument("--sleep_time", type=float, default=4, help="Time to sleep between API requests")
     parser.add_argument("--qid_base", type=int, default=10, help="Base of the qid interpreted as int.")

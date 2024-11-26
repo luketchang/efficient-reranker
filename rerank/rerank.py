@@ -1,5 +1,6 @@
 import argparse
 import torch
+import time
 from collections import defaultdict
 from torch.utils.data import DataLoader
 from accelerate import Accelerator
@@ -25,15 +26,25 @@ def main(model_name, checkpoint_path, qrels_path, rank_results_path, queries_pat
     model.eval()
     new_rank_results = defaultdict(list)
     
+    # Initialize latency tracking
+    total_latency = 0
+    total_batches = 0
+    
     with open(output_path, 'a') as f:
         with torch.no_grad():
             for i, batch in enumerate(dataloader):
                 print(f"Processing batch {i}/{len(dataloader)}")
 
                 inputs = batch["pairs"]
-                    
+                
+                # Start timing the ranking step
+                start_time = time.perf_counter()
                 outputs = model(**inputs)
                 output_logits = outputs.logits
+                # End timing and convert to milliseconds
+                batch_latency = (time.perf_counter() - start_time) * 1000
+                total_latency += batch_latency
+                total_batches += 1
 
                 for j in range(len(output_logits)):
                     qid = batch["qids"][j]
@@ -44,6 +55,7 @@ def main(model_name, checkpoint_path, qrels_path, rank_results_path, queries_pat
                 # Write results to file every `batch_write_interval` batches
                 if (i + 1) % flush_interval == 0:
                     print(f"Writing results to file after batch {i + 1}")
+                    print(f"Average ranking latency: {total_latency/total_batches:.2f} ms over {total_batches} batches")
                     for qid in sorted(new_rank_results.keys(), key=lambda k: int(strip_prefixes(k), qid_base)):
                         sorted_pid_and_scores = sorted(new_rank_results[qid], key=lambda x: x['score'], reverse=True)
                         for item in sorted_pid_and_scores:
@@ -54,6 +66,7 @@ def main(model_name, checkpoint_path, qrels_path, rank_results_path, queries_pat
             # Write any remaining results that didn't reach the batch_write_interval
             if new_rank_results:
                 print("Writing remaining results to file")
+                print(f"Final average ranking latency: {total_latency/total_batches:.2f} ms over {total_batches} batches")
                 for qid in sorted(new_rank_results.keys(), key=lambda k: int(strip_prefixes(k), qid_base)):
                     sorted_pid_and_scores = sorted(new_rank_results[qid], key=lambda x: x['score'], reverse=True)
                     for item in sorted_pid_and_scores:
